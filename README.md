@@ -29,7 +29,7 @@ npm link
 $ mangabrowser </path/to/manga/folder>
 ```
 
-2. Browse it using web browser at (http://localhost:31128)[http://localhost:31128]
+2. Browse it using web browser at http://localhost:31128
 
 #### License
 
