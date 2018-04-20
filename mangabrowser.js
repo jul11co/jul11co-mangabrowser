@@ -85,8 +85,8 @@ var data_dirs = [];
 var abs_path_mode = false;
 
 if (options.index_file) {
-  data_dir = argv[0] || path.dirname(options.index_file);
   console.log('Index file:', options.index_file);
+  data_dir = argv[0] ? path.resolve(argv[0]) : path.resolve(path.dirname(options.index_file));
 } else if (argv.length > 1) {
   abs_path_mode = true;
   data_dirs = argv.map(function(dir) {
@@ -105,7 +105,7 @@ var getAbsPath = function(relpath) {
   if (abs_path_mode) {
     return relpath;
   } else {
-    return path.join(data_dir, relpath);
+    return path.isAbsolute(relpath) ? relpath : path.join(data_dir, relpath);
   }
 }
 
@@ -113,15 +113,16 @@ var getRelPath = function(abspath) {
   if (abs_path_mode) {
     return abspath;
   } else {
-    return (abspath == data_dir) ? '.' : path.relative(data_dir, abspath);
+    return (abspath == data_dir || abspath == 'ROOT' || abspath == '.') ? '.' : path.relative(data_dir, abspath);
   }
 }
 
 var isRootPath = function(abspath) {
   if (abs_path_mode) {
-    return data_dirs.indexOf(abspath) != -1;
+    // return abspath == '/' || abspath == 'ROOT' || abspath == '.' || data_dirs.some(function(data_dir) { return abspath == path.dirname(data_dir); });
+    return abspath == '/' || abspath == 'ROOT' || abspath == '.';
   } else {
-    return abspath == data_dir;
+    return abspath == data_dir || abspath == '.' || abspath == '/' || abspath == 'ROOT';
   }
 }
 
@@ -304,21 +305,22 @@ var scanDir = function(dir_path, options, callback) {
   });
 }
 
-var getParentDirs = function(_path) {
+var getParentDirs = function(_path, debug) {
   var parents = [];
   if (isRootPath(_path)) {
-    parents.push('ROOT');
     return parents;
   }
+  if (debug) console.log('getParentDirs:', _path);
   var parent = path.dirname(_path);
-  if (parent && parent != '' && parent != '.') {
-    var _parents = getParentDirs(parent);
-    if (_parents.length) parents = parents.concat(_parents);
-    parents.push(parent);
-  } 
-  // else if (parent == '.') {
-  //   parents.push(parent);
-  // }
+  if (parent) {
+    if (isRootPath(parent)) {
+      parents.push('ROOT');
+    } else {
+      var _parents = getParentDirs(parent, debug);
+      if (_parents.length) parents = parents.concat(_parents);
+      parents.push(parent);
+    }
+  }
   return parents;
 }
 
@@ -409,9 +411,9 @@ var startServer = function() {
     }
 
     if (dir_path != '.' && dir_path != 'ROOT') {
-      var dir_parents = getParentDirs(dir_path);
+      var dir_parents = getParentDirs(getAbsPath(dir_path));
       parents = dir_parents.map(function(parent_path) {
-        return {path: parent_path, name: path.basename(parent_path)};
+        return {path: getRelPath(parent_path), name: path.basename(parent_path)};
       });
     }
 
@@ -653,9 +655,9 @@ var startServer = function() {
     
     var parents = [];
     if (manga_relpath != '.' && manga_relpath != 'ROOT') {
-      var manga_parents = getParentDirs(manga_relpath);
+      var manga_parents = getParentDirs(getAbsPath(manga_relpath));
       parents = manga_parents.map(function(parent_path) {
-        return {path: parent_path, name: path.basename(parent_path)};
+        return {path: getRelPath(parent_path), name: path.basename(parent_path)};
       });
     }
 
@@ -748,12 +750,20 @@ var startServer = function() {
       });
     }
 
+    var parents = [];
     if (query.from_dir) {
       query.from_dir = decodeURIComponent(query.from_dir);
 
-      manga_items = manga_items.filter(function(manga_item) {
-        return manga_item.relpath.indexOf(query.from_dir) == 0;
-      });
+      if (!isRootPath(query.from_dir)) {
+        var parent_dirs = getParentDirs(getAbsPath(query.from_dir));
+        parents = parent_dirs.map(function(parent_path) {
+          return {path: getRelPath(parent_path), name: path.basename(parent_path)};
+        });
+
+        manga_items = manga_items.filter(function(manga_item) {
+          return manga_item.relpath.indexOf(query.from_dir) == 0;
+        });
+      }
     }
 
     if (req.query.starts_with) {
@@ -833,6 +843,7 @@ var startServer = function() {
       config: config,
       scope: 'manga_list',
       query: query,
+      parents: parents,
       manga_search_recent: manga_search_recent,
       files_count: all_files.length,
       manga_items: manga_items,
@@ -866,7 +877,7 @@ var startServer = function() {
   });
 
   var updateParentDirSize = function(frelpath) {
-    var parent_dirs = getParentDirs(frelpath);
+    var parent_dirs = getParentDirs(getAbsPath(frelpath));
     if (parent_dirs && parent_dirs.length) {
       console.log(parent_dirs);
       var dir_size_map = {};
