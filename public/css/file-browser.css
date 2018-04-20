@@ -152,7 +152,7 @@ table.items tr.item-manga {
   position: absolute;
   text-align: center;
   width: 100%;
-  bottom: 70px;
+  bottom: 60px;
   z-index: 3001;
 }
 #file-preview-title {
@@ -253,4 +253,27 @@ table.items tr.item-manga {
   color: grey;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+#zoom-control {
+  position: fixed;
+  bottom: 100px;
+  width: 100%;
+  background: transparent;
+  text-align: center;
+}
+#zoom-control-inner {
+  margin: 0 auto;
+  display: inline-block;
+  padding: 10px 20px;
+  border: none;
+  box-shadow: 0 1px 2px rgba(43, 59, 93, 0.29);
+  background-color: rgba(0,0,0,0.6);
+  color: #ffffff;
+}
+#zoom-control a {
+  color: rgb(170, 170, 170);
+}
+#zoom-control a:hover,
+#zoom-control a:active {
+  color: #ffffff;
 }

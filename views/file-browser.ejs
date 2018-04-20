@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>File Browser</title>
+    <title>Manga Browser - Files</title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -17,36 +17,47 @@
   </head>
   <body>
 
-    <div class="container">
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="/">Manga Browser</a>
+          <button aria-expanded="false" class="navbar-toggle collapsed" 
+            type="button" data-toggle="collapse" data-target="#navbar-main">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+        </div>
+        <div id="navbar-main" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav">
+            <li><a href="/" title="Browse all manga">Manga <span class="badge"><%=manga_count%></span></a></li>
+            <li class="active"><a href="#files-content">Files <span class="badge"><%=files_count%></span></a></li>
+            <li><a href="/reload_index" title="Reload index"><i class="fa fa-refresh"></i></a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
 
-      <%
-      var base_comp = 'dir=' + encodeURIComponent(dir_path);
-      if (query.files) {
-        base_comp = 'files=1';
-      } else if (query.images){
-        base_comp = 'images=1';
-      } else if (query.videos) {
-        base_comp = 'videos=1';
-      } else if (query.file_type) {
-        base_comp = 'file_type=' + query.file_type;
-      } 
-      if (query.from_dir) {
-        base_comp += '&from_dir=' + query.from_dir;
-      }
-      %>
-      
+    <%
+    var base_comp = 'dir=' + encodeURIComponent(dir_path);
+    if (query.files) {
+      base_comp = 'files=1';
+    } else if (query.images){
+      base_comp = 'images=1';
+    } else if (query.videos) {
+      base_comp = 'videos=1';
+    } else if (query.file_type) {
+      base_comp = 'file_type=' + query.file_type;
+    } 
+    if (query.from_dir) {
+      base_comp += '&from_dir=' + query.from_dir;
+    }
+    %>
+    
+    <div class="container" style="margin-top: 75px;">
+
       <div class="row">
         <div id="browser-header" class="col-md-12">
-        <h3>
-          <a href="/">Manga Browser</a>
-        </h3>
-
-        <ul class="nav nav-tabs" style="margin-bottom: 10px;">
-          <li><a href="/" title="Browse all manga">Manga <span class="badge"><%=manga_count%></span></a></li>
-          <li class="active"><a href="#files-content">Files <span class="badge"><%=files_count%></span></a></li>
-          <li><a href="/reload_index" title="Reload index"><i class="fa fa-refresh"></i></a></li>
-        </ul>
-
         <p>
           <a href="/?files=1"><b>Files</b> (<%=files_count%>)</a>, 
           <a href="/?images=1"><b>Images</b> (<%=images_count%>)</a> 
@@ -413,6 +424,14 @@
 
             <div id="file-preview-left"></div>
             <div id="file-preview-right"></div>
+
+            <div id="zoom-control" class="hidden">
+              <div id="zoom-control-inner">
+                <span id="zoom-value" data-value="100" class="hidden"></span>
+                <a href="#" id="zoom-in"><i class="fa fa-search-plus fa-2x fa-fw"></i></a>
+                <a href="#" id="zoom-out"><i class="fa fa-search-minus fa-2x fa-fw"></i></a>
+              </div>
+            </div>
 
           </div>
 

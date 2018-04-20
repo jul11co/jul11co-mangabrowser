@@ -129,6 +129,13 @@ $(document).ready(function() {
         '" src="/file?path=' + encodeURIComponent(file_path) + '">'
     );
     $("#previewModal").modal('show');
+
+    if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
+      applyZoom();
+      if (!$('#file-preview-actions').hasClass('hidden')) {
+        showZoom();
+      }
+    }
     
     $("<img/>").on('load', function(){
       var file_info = $('#file-preview-file-info').text();
@@ -194,6 +201,13 @@ $(document).ready(function() {
 
         $('#file-preview-content').html(preview_html);
 
+        if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
+          applyZoom();
+          if (!$('#file-preview-actions').hasClass('hidden')) {
+            showZoom();
+          }
+        }
+
         if (data.pages && data.pages.length>1) {
 
           file_info_text = $('#file-preview-file-info').text();
@@ -202,12 +216,18 @@ $(document).ready(function() {
           $('#file-preview-load-more-button').removeClass('hidden');
 
           var loadNextPage = function() {
-            $('#file-preview-content').append('<img class="lazyload fadeIn animated extra ' + 
-              (file_preview_image_size||'fit-width') + '"' + 
-              ' src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="' +
-              ' data-src="/comic?path=' + encodeURIComponent(file_path) + '&page=' + loaded_pages + 
-              '" alt="Page - ' + (loaded_pages+1) + '">'
+            $('#file-preview-content').append(
+              '<img class="lazyload fadeIn animated extra ' + 
+                (file_preview_image_size||'fit-width') + '"' + 
+                ' src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="' +
+                ' data-src="/comic?path=' + encodeURIComponent(file_path) + '&page=' + loaded_pages + 
+                '" alt="Page - ' + (loaded_pages+1) + 
+                '">'
               );
+
+            if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
+              applyZoom();
+            }
 
             loaded_pages++;
 
@@ -301,9 +321,10 @@ $(document).ready(function() {
       } else if (data) {
 
         var pages_count = (data.pages_count);
-        var file_info_text = $('#file-preview-file-info').text();
-
-        $('#file-preview-file-info').text(file_info_text + ' - Manga Chapter (' + pages_count 
+        // var file_info_text = $('#file-preview-file-info').text();
+        // $('#file-preview-file-info').text(file_info_text + ' - Manga Chapter (' + pages_count 
+        //   + ' page' + ((pages_count>1)?'s)':')'));
+        $('#file-preview-file-info').text('Manga Chapter (' + pages_count 
           + ' page' + ((pages_count>1)?'s)':')'));
 
         var preview_html = 
@@ -319,9 +340,16 @@ $(document).ready(function() {
 
         $('#file-preview-content').html(preview_html);
 
+        if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
+          applyZoom();
+          if (!$('#file-preview-actions').hasClass('hidden')) {
+            showZoom();
+          }
+        }
+
         if (data.pages && data.pages.length>1) {
 
-          file_info_text = $('#file-preview-file-info').text();
+          // file_info_text = $('#file-preview-file-info').text();
           var loaded_pages = 1;
 
           $('#file-preview-load-more-button').removeClass('hidden');
@@ -332,11 +360,17 @@ $(document).ready(function() {
               ('/file?path=' + encodeURIComponent(chapter_path+'/'+next_page.file))
               : ('/image?src=' + encodeURIComponent(next_page.src) + '&reader=1"');
 
-            $('#file-preview-content').append('<img class="lazyload fadeIn animated extra ' + 
-              (file_preview_image_size||'fit-width') + '"' + 
-              ' src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="' +
-              ' data-src="' + page_src + '" alt="Page - ' + (loaded_pages+1) + '">'
+            $('#file-preview-content').append(
+              '<img class="lazyload fadeIn animated extra ' + 
+                (file_preview_image_size||'fit-width') + '"' + 
+                ' src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="' +
+                ' data-src="' + page_src + '" alt="Page - ' + (loaded_pages+1) + 
+                '">'
               );
+
+            if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
+              applyZoom();
+            }
 
             loaded_pages++;
 
@@ -425,6 +459,8 @@ $(document).ready(function() {
         }, 2000);
       }
 
+      hideZoom();
+
       var index = previewable_files_index_map[$item.index()];
       $('#file-preview-subtitle').text('' + (index+1) + ' of ' + previewable_files_count);
 
@@ -460,24 +496,50 @@ $(document).ready(function() {
     }
   }
 
+  var hideZoom = function() {
+    $('#zoom-control').addClass('hidden');
+  }
+
+  var showZoom = function() {
+    $('#zoom-control').removeClass('hidden');
+  }
+
+  var resetZoom = function() {
+    // $('#zoom-value').attr('data-value', '100');
+    $('#file-preview-content img').css('width', 'auto');
+  }
+
+  var applyZoom = function() {
+    var zoom_value = $('#zoom-value').attr('data-value');
+    $('#file-preview-content img').css('width', zoom_value+'%');
+  }
+
   var togglePreviewImageSize = function() {
     // 'fit' -> 'fit-width' -> 'fit-height' -> 'max' -> 'fit' -> ...
     if (file_preview_image_size == 'fit') {
       file_preview_image_size = 'fit-width';
       $('#file-preview-image-resize-button').html('<i class="fa fa-arrows-h fa-lg fa-fw"></i>');
       $('#file-preview-content img').removeClass('fit').addClass('fit-width');
+      showZoom();
+      applyZoom();
     } else if (file_preview_image_size == 'fit-width') {
       file_preview_image_size = 'fit-height';
       $('#file-preview-image-resize-button').html('<i class="fa fa-arrows-v fa-lg fa-fw"></i>');
       $('#file-preview-content img').removeClass('fit-width').addClass('fit-height');
+      hideZoom();
+      resetZoom();
     } else if (file_preview_image_size == 'fit-height') {
       file_preview_image_size = 'max';
       $('#file-preview-image-resize-button').html('<b style="font-size: 16px;line-height: 12px;">1:1</b>');
       $('#file-preview-content img').removeClass('fit-height').addClass('max');
+      showZoom();
+      applyZoom();
     } else {
       file_preview_image_size = 'fit';
       $('#file-preview-image-resize-button').html('<i class="fa fa-arrows fa-lg fa-fw"></i>');
       $('#file-preview-content img').removeClass('max').addClass('fit');
+      hideZoom();
+      resetZoom();
     }
   }
 
@@ -543,6 +605,14 @@ $(document).ready(function() {
       $('#file-preview-title').addClass('hidden');
     } else {
       $('#file-preview-title').removeClass('hidden');
+    }
+    if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
+      // $('#zoom-control').toggleClass('hidden');
+      if ($('#file-preview-actions').hasClass('hidden')) {
+        hideZoom();
+      } else {
+        showZoom();
+      }
     }
   });
 
@@ -618,5 +688,38 @@ $(document).ready(function() {
     }
   });
 
+  $('#zoom-control #zoom-in').on('click', function(event) {
+    event.preventDefault();
+    var zoom_value = $('#zoom-value').attr('data-value');
+    zoom_value = parseInt(zoom_value);
+    if (!isNaN(zoom_value)) {
+      zoom_value += 5;
+      if (file_preview_image_size == 'fit-width' && zoom_value >= 100) {
+        zoom_value = 100;
+        $('#zoom-control #zoom-in').addClass('disable');
+      } else {
+        $('#zoom-control #zoom-in').removeClass('disable');
+      }
+      $('#zoom-value').attr('data-value', zoom_value);
+      $('#file-preview-content img').css('width', zoom_value+'%');
+    }
+  });
+
+  $('#zoom-control #zoom-out').on('click', function(event) {
+    event.preventDefault();
+    var zoom_value = $('#zoom-value').attr('data-value');
+    zoom_value = parseInt(zoom_value);
+    if (!isNaN(zoom_value)) {
+      zoom_value -= 5;
+      if (zoom_value <= 10) {
+        zoom_value = 10;
+        $('#zoom-control #zoom-out').addClass('disable');
+      } else {
+        $('#zoom-control #zoom-out').removeClass('disable');
+      }
+      $('#zoom-value').attr('data-value', zoom_value);
+      $('#file-preview-content img').css('width', zoom_value+'%');
+    }
+  });
 
 });
