@@ -101,31 +101,6 @@ if (options.index_file) {
   console.log('Input directory:', data_dir);
 }
 
-var getAbsPath = function(relpath) {
-  if (abs_path_mode) {
-    return relpath;
-  } else {
-    return path.isAbsolute(relpath) ? relpath : path.join(data_dir, relpath);
-  }
-}
-
-var getRelPath = function(abspath) {
-  if (abs_path_mode) {
-    return abspath;
-  } else {
-    return (abspath == data_dir || abspath == 'ROOT' || abspath == '.') ? '.' : path.relative(data_dir, abspath);
-  }
-}
-
-var isRootPath = function(abspath) {
-  if (abs_path_mode) {
-    // return abspath == '/' || abspath == 'ROOT' || abspath == '.' || data_dirs.some(function(data_dir) { return abspath == path.dirname(data_dir); });
-    return abspath == '/' || abspath == 'ROOT' || abspath == '.';
-  } else {
-    return abspath == data_dir || abspath == '.' || abspath == '/' || abspath == 'ROOT';
-  }
-}
-
 var config = {
   thumbnals: !(options.no_thumbs)
 };
@@ -196,17 +171,47 @@ if (options.listen_port) {
   }
 }
 
+var listen_port = options.listen_port || 31128;
+
 var cache_dir = path.join(process.env['HOME'], '.jul11co', 'mangabrowser', 'cache');
 fse.ensureDirSync(cache_dir);
+
 var thumbs_dir = path.join(process.env['HOME'], '.jul11co', 'mangabrowser', 'thumbs');
 fse.ensureDirSync(thumbs_dir);
+
 var db_dir = path.join(process.env['HOME'], '.jul11co', 'mangabrowser', 'databases');
 fse.ensureDirSync(db_dir);
 fse.ensureDirSync(path.join(db_dir, utils.md5Hash(data_dir)));
 
 var chapter_read_store = new JsonStore({file: path.join(db_dir, utils.md5Hash(data_dir), 'chapter_read.json')});
 
-var listen_port = options.listen_port || 31128;
+///
+
+var getAbsPath = function(relpath) {
+  if (abs_path_mode) {
+    return relpath;
+  } else {
+    return path.isAbsolute(relpath) ? relpath : path.join(data_dir, relpath);
+  }
+}
+
+var getRelPath = function(abspath) {
+  if (abs_path_mode) {
+    return abspath;
+  } else {
+    return (abspath == data_dir || abspath == 'ROOT' || abspath == '.') ? '.' : path.relative(data_dir, abspath);
+  }
+}
+
+var isRootPath = function(abspath) {
+  if (abs_path_mode) {
+    return abspath == '/' || abspath == 'ROOT' || abspath == '.';
+  } else {
+    return abspath == data_dir || abspath == '.' || abspath == '/' || abspath == 'ROOT';
+  }
+}
+
+///
 
 function isChapterRead(chapter_url) {
   return chapter_read_store.get(utils.md5Hash(chapter_url));
@@ -216,6 +221,8 @@ function setChapterRead(chapter_url, read_info) {
   chapter_read_store.set(utils.md5Hash(chapter_url), read_info || {last_read: new Date()});
 }
 
+///
+
 function ellipsisMiddle(str, max_length, first_part, last_part) {
   if (!max_length) max_length = 140;
   if (!first_part) first_part = 40;
@@ -224,85 +231,6 @@ function ellipsisMiddle(str, max_length, first_part, last_part) {
     return str.substr(0, first_part) + '...' + str.substr(str.length-last_part, str.length);
   }
   return str;
-}
-
-var scanDir = function(dir_path, options, callback) {
-  if (typeof options == 'function') {
-    callback = options;
-    options = {};
-  }
-
-  // console.log(chalk.magenta('Directory:'), ellipsisMiddle(dir_path));
-
-  var dirlist = [];
-  var filelist = [];
-
-  fs.readdir(dir_path, function(err, files) {
-    if (err) return callback(err);
-
-    async.eachSeries(files, function(file, cb) {
-      
-      if (file == '.DS_Store') return cb();
-
-      var file_path = path.join(dir_path, file);
-
-      var stats = undefined;
-      try {
-        stats = fs.lstatSync(file_path);
-      } catch(e) {
-        console.log(e);
-        return cb();
-      }
-      if (!stats) return cb();
-      
-      // console.log(stats);
-      if (stats.isFile()) {
-        if (file.indexOf('.') == 0) {
-          return cb();
-        }
-        
-        if (options.min_file_size && stats['size'] < min_file_size) return cb();
-
-        var file_type = path.extname(file).replace('.','').toLowerCase();
-        if (options.file_types && options.file_types.indexOf(file_type) == -1) return cb();
-
-        var file_info = {
-          path: file_path,
-          name: file,
-          type: file_type,
-          size: stats['size'],
-          atime: stats['atime'],
-          mtime: stats['mtime'],
-          ctime: stats['ctime']
-        };
-
-        filelist.push(file_info);
-        cb();
-      } else if (stats.isDirectory() && options.recursive) {
-
-        dirlist.push({
-          path: file_path,
-          name: file,
-          atime: stats['atime'],
-          mtime: stats['mtime'],
-          ctime: stats['ctime']
-        });
-
-        scanDir(file_path, options, function(err, files, dirs) {
-          if (err) return cb(err);
-
-          filelist = filelist.concat(files);
-          dirlist = dirlist.concat(dirs);
-
-          cb();
-        });
-      } else {
-        cb();
-      }
-    }, function(err) {
-      callback(err, filelist, dirlist);
-    });
-  });
 }
 
 var getParentDirs = function(_path, debug) {
@@ -366,6 +294,8 @@ var checkFileExists = function(file_path, exists_map) {
   }
   return utils.fileExists(file_path);
 }
+
+///
 
 var startServer = function() {
   var express = require('express');
@@ -603,22 +533,26 @@ var startServer = function() {
     res.render('file-browser', {
       config: config,
       query: query,
+      // navigation
       parents: parents,
+      // current dir info
       dir_path: dir_path,
       dir_name: path.basename(dir_path),
       dir_file_types: dir_file_types,
       manga: manga_map[dir_path], // reference to manga of same dir
       total_size: total_size,
-      items_length: items_length,
+      items_length: items_length, // dirs_length + files_length
       dirs: dirs,
       dirs_length: dirs_length,
       files: files,
       files_length: files_length,
+      // global
       manga_count: manga_list.length,
       files_count: all_files.length,
       images_count: image_files.length,
       videos_count: video_files.length,
       popular_file_types: popular_file_types,
+      // helpers
       path: path,
       bytes: bytes,
       moment: moment,
@@ -672,18 +606,19 @@ var startServer = function() {
     res.render('manga-browser', {
       config: config,
       query: query,
-      manga_search_recent: manga_search_recent,
+      // navigation
       scope: 'manga_info',
       parents: parents,
-      files_count: all_files.length,
-      manga_items: [],
-      items_count: 0,
       manga: manga,
+      // global
+      files_count: all_files.length,
       manga_count: manga_list.length,
       manga_indices: manga_indices,
       manga_filters: manga_filters,
       manga_field_filter_map: manga_field_filter_map,
       manga_starts_with_list: manga_starts_with_list,
+      manga_search_recent: manga_search_recent,
+      // helpers
       path: path,
       bytes: bytes,
       moment: moment,
@@ -701,18 +636,25 @@ var startServer = function() {
     } else if (req.query.view) {
       return res.render('manga-browser', {
         config: config,
-        scope: 'manga_list',
         query: req.query,
-        manga_search_recent: manga_search_recent,
-        files_count: all_files.length,
+        // navigation
+        scope: 'manga_list',
+        manga: {},
         manga_items: [],
         items_count: 0,
-        manga: {},
+        // pagination
+        page_size: 100,
+        current_page: 1,
+        page_count: 1,
+        // global
+        files_count: all_files.length,
         manga_count: manga_list.length,
         manga_indices: manga_indices,
         manga_filters: manga_filters,
         manga_field_filter_map: manga_field_filter_map,
         manga_starts_with_list: manga_starts_with_list,
+        manga_search_recent: manga_search_recent,
+        // helpers
         path: path,
         bytes: bytes,
         moment: moment,
@@ -830,9 +772,14 @@ var startServer = function() {
       query.listview = req.session.listview;
     }
 
+    var page_size = query.page_size ? parseInt(query.page_size) : 100;
+    var current_page = query.page ? parseInt(query.page) : 1;
+
     query.limit = query.limit ? parseInt(query.limit) : 100;
     query.skip = query.skip ? parseInt(query.skip) : 0;
     
+    var page_count = Math.ceil(manga_items.length/page_size);
+
     var start_index = Math.min(query.skip, manga_items.length);
     var end_index = Math.min(query.skip + query.limit, manga_items.length);
     var items_count = manga_items.length;
@@ -841,19 +788,26 @@ var startServer = function() {
     // TODO: replace with home
     res.render('manga-browser', {
       config: config,
-      scope: 'manga_list',
       query: query,
+      // navigation
+      scope: 'manga_list',
+      manga: {},
       parents: parents,
-      manga_search_recent: manga_search_recent,
-      files_count: all_files.length,
       manga_items: manga_items,
       items_count: items_count,
-      manga: {},
+      // pagination
+      page_size: page_size,
+      current_page: current_page,
+      page_count: page_count,
+      // global
+      files_count: all_files.length,
       manga_count: manga_list.length,
       manga_indices: manga_indices,
       manga_filters: manga_filters,
       manga_field_filter_map: manga_field_filter_map,
       manga_starts_with_list: manga_starts_with_list,
+      manga_search_recent: manga_search_recent,
+      // helpers
       path: path,
       bytes: bytes,
       moment: moment,
@@ -1209,6 +1163,87 @@ var startServer = function() {
   startListen();
 }
 
+///
+
+var scanDir = function(dir_path, options, callback) {
+  if (typeof options == 'function') {
+    callback = options;
+    options = {};
+  }
+
+  // console.log(chalk.magenta('Directory:'), ellipsisMiddle(dir_path));
+
+  var dirlist = [];
+  var filelist = [];
+
+  fs.readdir(dir_path, function(err, files) {
+    if (err) return callback(err);
+
+    async.eachSeries(files, function(file, cb) {
+      
+      if (file == '.DS_Store') return cb();
+
+      var file_path = path.join(dir_path, file);
+
+      var stats = undefined;
+      try {
+        stats = fs.lstatSync(file_path);
+      } catch(e) {
+        console.log(e);
+        return cb();
+      }
+      if (!stats) return cb();
+      
+      // console.log(stats);
+      if (stats.isFile()) {
+        if (file.indexOf('.') == 0) {
+          return cb();
+        }
+        
+        if (options.min_file_size && stats['size'] < min_file_size) return cb();
+
+        var file_type = path.extname(file).replace('.','').toLowerCase();
+        if (options.file_types && options.file_types.indexOf(file_type) == -1) return cb();
+
+        var file_info = {
+          path: file_path,
+          name: file,
+          type: file_type,
+          size: stats['size'],
+          atime: stats['atime'],
+          mtime: stats['mtime'],
+          ctime: stats['ctime']
+        };
+
+        filelist.push(file_info);
+        cb();
+      } else if (stats.isDirectory() && options.recursive) {
+
+        dirlist.push({
+          path: file_path,
+          name: file,
+          atime: stats['atime'],
+          mtime: stats['mtime'],
+          ctime: stats['ctime']
+        });
+
+        scanDir(file_path, options, function(err, files, dirs) {
+          if (err) return cb(err);
+
+          filelist = filelist.concat(files);
+          dirlist = dirlist.concat(dirs);
+
+          cb();
+        });
+      } else {
+        cb();
+      }
+    }, function(err) {
+      callback(err, filelist, dirlist);
+    });
+  });
+}
+
 var addDirToMap = function(dir) {
   var dir_path = dir.path;
   var dir_relpath = getRelPath(dir.path);
@@ -1256,7 +1291,11 @@ var getDirSize = function(dir_relpath, dir_size_map) {
     return dirs_map[dir_relpath].size;
   }
 
-  var dir_size = dirs_map[dir_relpath].size; // size of files (if any)
+  // var dir_size = dirs_map[dir_relpath].size; // size of files (if any)
+  var dir_size = 0;
+  dirs_map[dir_relpath].files.forEach(function(file_relpath) {
+    dir_size += files_map[file_relpath].size;
+  });
   dirs_map[dir_relpath].subdirs.forEach(function(subdir_relpath) {
     dir_size += getDirSize(subdir_relpath, dir_size_map);
   });
@@ -1341,6 +1380,8 @@ var createFilesIndex = function(files) {
   if (file_types.length > 10) popular_file_types = file_types.slice(0, 10);
   else popular_file_types = file_types.slice(0);
 }
+
+///
 
 var addToMangaIndex = function(index_id, key) {
   if (!manga_indices[index_id]) {
@@ -1571,9 +1612,9 @@ var createMangaIndex = function(files) {
   console.log('Manga loaded:', manga_list.length);
 }
 
-var loadIndex = function(callback) {
+///
 
-  // var supported_file_types = ['mp4','mkv','avi','wmv','png','gif','jpg','jpeg','txt'];
+var loadIndex = function(callback) {
 
   if (options.index_file) {
     if (!utils.fileExists(options.index_file)) {
@@ -1609,10 +1650,6 @@ var loadIndex = function(callback) {
       }
     }
 
-    // files = files.filter(function(file) { 
-    //   return supported_file_types.indexOf(file.type) != -1;
-    // });
-
     createDirsIndex(dirs);
     createFilesIndex(files);
     recalculateDirsSize();
@@ -1623,7 +1660,6 @@ var loadIndex = function(callback) {
   } 
   else if (data_dirs.length > 1) {
     var scan_opts = {recursive: true};
-    // scan_opts.file_types = supported_file_types;
 
     console.log('Scanning input dirs...');
 
@@ -1662,7 +1698,6 @@ var loadIndex = function(callback) {
   }
   else {
     var scan_opts = {recursive: true};
-    // scan_opts.file_types = supported_file_types;
 
     console.log('Scanning input dir...');
     scanDir(data_dir, scan_opts, function(err, files, dirs) {
@@ -1672,10 +1707,6 @@ var loadIndex = function(callback) {
         return callback(err);
       }
       
-      // files = files.filter(function(file) { 
-      //   return supported_file_types.indexOf(file.type) != -1;
-      // });
-
       createDirsIndex(dirs);
       createFilesIndex(files);
       recalculateDirsSize();
@@ -1714,6 +1745,8 @@ var reloadIndex = function(callback) {
 
   loadIndex(callback);
 }
+
+///
 
 // Load index & start server in the first time
 loadIndex(function(err) {

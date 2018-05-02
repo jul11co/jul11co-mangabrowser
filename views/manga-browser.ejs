@@ -54,6 +54,10 @@
         width: calc(50% - 10px);
       }
     }
+    .manga-grid-item img {
+      max-height: 250px;
+      margin: 0 auto;
+    }
     </style>
 
     <script src="/js/jquery-3.2.1.min.js"></script>
@@ -395,9 +399,9 @@
               </div>
 
               <div class="btn-group" style="display: inline-block;">
-                <a href="/?<%=base_comp_without_listview%>&listview=cover" title="Cover list"  class="btn <%=(query.listview!='small'&&query.listview!='details')?'btn-primary':'btn-default'%>"><i class="fa fa-th fa-fw"></i></a>
-                <a href="/?<%=base_comp_without_listview%>&listview=details" title="Detail list" class="btn <%=(query.listview=='details')?'btn-primary':'btn-default'%>"><i class="fa fa-th-list fa-fw"></i></a>
-                <a href="/?<%=base_comp_without_listview%>&listview=small" title="Small list"  class="btn <%=(query.listview=='small')?'btn-primary':'btn-default'%>"><i class="fa fa-list fa-fw"></i></a>
+                <a href="/?<%=base_comp_without_listview%>&listview=cover" title="Cover list"  class="btn <%=(query.listview!='small'&&query.listview!='details')?'btn-default active':'btn-default'%>"><i class="fa fa-th fa-fw"></i></a>
+                <a href="/?<%=base_comp_without_listview%>&listview=details" title="Detail list" class="btn <%=(query.listview=='details')?'btn-default active':'btn-default'%>"><i class="fa fa-th-list fa-fw"></i></a>
+                <a href="/?<%=base_comp_without_listview%>&listview=small" title="Small list"  class="btn <%=(query.listview=='small')?'btn-default active':'btn-default'%>"><i class="fa fa-list fa-fw"></i></a>
               </div>
               </div>
 
@@ -413,6 +417,46 @@
               <%}else if (items_count > 0){%>
               <p><%=(query_skip+1)%>-<%=items_count%></p>
               <%}%>
+
+              <%if (page_count > 1) {%>
+              <ul class="pagination" style="margin: 0 0 10px 0;">
+                <%if (current_page > 1) {%>
+                  <li><a href="/?<%=base_comp%>&page=<%=current_page-1%>">&laquo;</a></li>
+                <%} else {%>
+                  <li class="disabled"><a href="#">&laquo;</a></li>
+                <%}%>
+                <%var i = 1;
+                if (current_page > 3) {
+                  i = current_page - 2;
+                }%>
+                <%if (i !== 1) {%>
+                  <li><a href="/?<%=base_comp%>&page=1">1</a></li>
+                <%}%>
+                <%if (i > 2) {%>
+                  <li class="disabled"><a href="#">...</a></li>
+                <%}%>
+                <%for (i; i < page_count; i++) {%>
+                  <%if (current_page == i) {%>
+                    <li class="active"><span><%=i%> <span class="sr-only">(current)</span></span></li>
+                  <%} else {%>
+                    <li><a href="/?<%=base_comp%>&page=<%=i%>"><%=i%></a></li>
+                  <%}%>
+                  <%if (i == page_count - 1) break;%>
+                  <%if (i == (current_page + 2)) {%>
+                    <li class="disabled"><a href="#">...</a></li>
+                    <%break;%>
+                  <%}%>
+                <%}%>
+                <%if (current_page != page_count) {%>
+                  <li><a href="/?<%=base_comp%>&page=<%=page_count%>"><%=page_count%></a></li>
+                  <li><a href="/?<%=base_comp%>&page=<%=current_page+1%>">&raquo;</a></li>
+                <%} else {%>
+                  <li class="active"><a href="/?<%=base_comp%>&page=<%=page_count%>"><%=page_count%></a></li>
+                  <li class="disabled"><a href="#">&raquo;</a></li>
+                <%}%>
+              </ul>
+              <%}%>
+
             </div>
 
             <div style="overflow-x:auto;">
@@ -571,9 +615,9 @@
                 <div class="manga-cover-container" style="margin-bottom: 10px;">
                   <a href="/?manga=<%=encodeURIComponent(manga_item.relpath)%>" title="<%=manga_item.name%>">
                     <%if (manga_item['cover_image']){%>
-                    <img class="img-responsive lazyload" src="/img/folder-icon.png" data-src="/image?src=<%=encodeURIComponent(manga_item['cover_image'])%>" alt="" style="max-height: 200px;margin: 0 auto;" onerror="this.onerror=null;this.src='/img/folder-icon.png';">
+                    <img class="img-responsive lazyload" src="/img/folder-icon.png" data-src="/image?src=<%=encodeURIComponent(manga_item['cover_image'])%>" alt="" onerror="this.onerror=null;this.src='/img/folder-icon.png';">
                     <%}else{%>
-                    <img class="img-responsive" src="/img/folder-icon.png" style="margin: 0 auto;" />
+                    <img class="img-responsive" src="/img/folder-icon.png" />
                     <%}%>
                   </a>
                 </div>
@@ -592,9 +636,51 @@
               <%});%>
             <%}%>
 
+            <div>
             <%if (items_count>next_skip){%>
             <p><a href="/?<%=base_comp%>&skip=<%=next_skip%>">and more <%=(items_count-next_skip)%> manga...</a></p>
             <%}%>
+
+            <%if (page_count > 1) {%>
+            <ul class="pagination" style="margin: 0 0 10px 0;">
+              <%if (current_page > 1) {%>
+                <li><a href="/?<%=base_comp%>&page=<%=current_page-1%>">&laquo;</a></li>
+              <%} else {%>
+                <li class="disabled"><a href="#">&laquo;</a></li>
+              <%}%>
+              <%var i = 1;
+              if (current_page > 3) {
+                i = current_page - 2;
+              }%>
+              <%if (i !== 1) {%>
+                <li><a href="/?<%=base_comp%>&page=1">1</a></li>
+              <%}%>
+              <%if (i > 2) {%>
+                <li class="disabled"><a href="#">...</a></li>
+              <%}%>
+              <%for (i; i < page_count; i++) {%>
+                <%if (current_page == i) {%>
+                  <li class="active"><span><%=i%> <span class="sr-only">(current)</span></span></li>
+                <%} else {%>
+                  <li><a href="/?<%=base_comp%>&page=<%=i%>"><%=i%></a></li>
+                <%}%>
+                <%if (i == page_count - 1) break;%>
+                <%if (i == (current_page + 2)) {%>
+                  <li class="disabled"><a href="#">...</a></li>
+                  <%break;%>
+                <%}%>
+              <%}%>
+              <%if (current_page != page_count) {%>
+                <li><a href="/?<%=base_comp%>&page=<%=page_count%>"><%=page_count%></a></li>
+                <li><a href="/?<%=base_comp%>&page=<%=current_page+1%>">&raquo;</a></li>
+              <%} else {%>
+                <li class="active"><a href="/?<%=base_comp%>&page=<%=page_count%>"><%=page_count%></a></li>
+                <li class="disabled"><a href="#">&raquo;</a></li>
+              <%}%>
+            </ul>
+            <%}%>
+            </div>
+
             </div>
           </div><!-- panel-body -->
         </div><!-- list-items-panel -->
@@ -724,7 +810,7 @@
                   <%manga.chapters.forEach(function(chapter, idx){%>
                     <tr class="item-file item-manga-chapter-<%=chapter.type%>" 
                       data-file-type="<%=chapter.type%>"
-                      data-file-size="<%=chapter.cbz_size||0%>"
+                      data-file-size="<%=bytes(chapter.cbz_size||0)%>"
                       data-file-path="<%=(chapter.cbz_exists)?chapter.cbz_file:(chapter.output_dir||'')%>"
                       data-file-name="<%=chapter.title%>" 
                       title="<%=chapter.title%>">
