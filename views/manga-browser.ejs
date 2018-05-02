@@ -58,6 +58,9 @@
       max-height: 250px;
       margin: 0 auto;
     }
+    ol.breadcrumb {
+      margin-bottom: 0;
+    }
     </style>
 
     <script src="/js/jquery-3.2.1.min.js"></script>
@@ -141,47 +144,8 @@
         <div class="col-md-10 col-sm-9 col-xs-12">
         <%if (scope == 'manga_list') {%>
         <!-- manga_list - START -->
+
         <div class="row">
-        <div class="col-md-12">
-          <nav aria-label="breadcrumb" role="navigation">
-            <ol class="breadcrumb">
-              <li class="breadcrumb-item"><a href="/" title="All Manga"><i class="fa fa-book fa-fw"></i></a></li>
-              <%if (query.artist) {%>
-              <li class="breadcrumb-item">Artist: <span class="text-capitalize"><%=utils.replaceAll(query.artist,'-',' ')%></span></li>
-              <%} else if (query.author) {%>
-              <li class="breadcrumb-item">Author: <span class="text-capitalize"><%=utils.replaceAll(query.author,'-',' ')%></span></li>
-              <%} else if (query.category) {%>
-              <li class="breadcrumb-item">Category: <span class="text-capitalize"><%=utils.replaceAll(query.category,'-',' ')%></span></li>
-              <%} else if (query.genre) {%>
-              <li class="breadcrumb-item">Genre: <span class="text-capitalize"><%=utils.replaceAll(query.genre,'-',' ')%></span></li>
-              <%} else if (query.tag) {%>
-              <li class="breadcrumb-item">Tag: <span class="text-capitalize"><%=utils.replaceAll(query.tag,'-',' ')%></span></li>
-              <%} else if (query.parody) {%>
-              <li class="breadcrumb-item">Parody: <span class="text-capitalize"><%=utils.replaceAll(query.parody,'-',' ')%></span></li>
-              <%} else if (query.character) {%>
-              <li class="breadcrumb-item">Character: <span class="text-capitalize"><%=utils.replaceAll(query.character,'-',' ')%></span></li>
-              <%} else if (query.status) {%>
-              <li class="breadcrumb-item">Status: <span class="text-capitalize"><%=utils.replaceAll(query.status,'-',' ')%></span></li>
-              <%} else if (query.language) {%>
-              <li class="breadcrumb-item">Language: <span class="text-capitalize"><%=utils.replaceAll(query.language,'-',' ')%></span></li>
-              <%} else if (query.starts_with) {%>
-              <li class="breadcrumb-item">Starts with: <span class="text-capitalize"><%=query.starts_with%></span></li>
-              <%} else if (query.search) {%>
-              <li class="breadcrumb-item">Search: <%=query.search%></li>
-              <%} else if (query.view) {%>
-              <li class="breadcrumb-item"><span class="text-capitalize"><%=query.view%></span></li>
-              <%} else if (!query.from_dir) {%>
-              <li class="breadcrumb-item">Manga List</li>
-              <%}%>
-              <%if (query.from_dir) {%>
-                <%parents.forEach(function(parent){%>
-              <li class="breadcrumb-item"><a href="/?from_dir=<%=encodeURIComponent(parent.path)%>"><%=parent.name%></a></li>
-                <%});%>
-              <li class="breadcrumb-item"><%=path.basename(query.from_dir)%></li>
-              <%}%>
-            </ol>
-          </nav>
-        </div>
 
         <div id="filter-panels" class="col-md-12">
 
@@ -202,7 +166,7 @@
                   <div id="start-with" class="tab-pane fade in active">
                     <%if (manga_starts_with_list.length) {%>
                       <%manga_starts_with_list.forEach(function(first_letter){%>
-                        <a class="btn <%if (query['starts_with']==first_letter.name){%>btn-primary<%}else{%>btn-default<%}%> btn-xs" href="/?starts_with=<%=first_letter.name%>"><%=first_letter.name%></a> 
+                        <a class="btn <%if (query['starts_with']==first_letter.name){%>btn-primary<%}else{%>btn-default<%}%> btn-sm" href="/?starts_with=<%=first_letter.name%>"><%=first_letter.name%></a> 
                       <%});%>
                     <%}%>
                   </div>
@@ -210,7 +174,7 @@
                   <div id="<%=manga_filter.param%>" class="tab-pane fade">
                     <%if (manga_indices[manga_filter.index] && manga_indices[manga_filter.index].popular.length) {%>
                       <%manga_indices[manga_filter.index].popular.forEach(function(item,idx){%>
-                    <a class="btn <%if (query[manga_filter.param]==item.name){%>btn-primary<%}else{%>btn-default<%}%> btn-xs filter-tag" href="/?<%=manga_filter.param%>=<%=item.name%>" style="text-transform: capitalize;"><b><%=ellipsisMiddle((manga_filter.hyphen)?utils.replaceAll(item.name,'-',' '):item.name,40,30,10)%></b> <small><%=item.count%></small></a>
+                    <a class="btn <%if (query[manga_filter.param]==item.name){%>btn-primary<%}else{%>btn-default<%}%> btn-sm filter-tag" href="/?<%=manga_filter.param%>=<%=item.name%>" style="text-transform: capitalize;"><b><%=ellipsisMiddle((manga_filter.hyphen)?utils.replaceAll(item.name,'-',' '):item.name,40,30,10)%></b> <small><%=item.count%></small></a>
                       <%});%>
                     <%}%>
                   </div>
@@ -225,7 +189,7 @@
             <%if (manga_starts_with_list.length) {%>
             <div id="view-alphabet" class="hidden-xs tab-pane fade <%=(query.starts_with||query.view=='alphabet')?'in active':''%>">
             <div class="panel panel-default">
-              <div class="panel-heading" style="padding-bottom: 5px;padding-top: 5px;">Starts with</div>
+              <div class="panel-heading">Starts with</div>
               <div class="panel-body" style="font-size: 16px;">
             <%manga_starts_with_list.forEach(function(first_letter){%>
               <a class="btn <%if (query['starts_with']==first_letter.name){%>btn-primary<%}else{%>btn-default<%}%> btn-sm filter-tag" href="/?starts_with=<%=first_letter.name%>"><%=first_letter.name%></a> 
@@ -238,7 +202,7 @@
             <%manga_filters.forEach(function(manga_filter) {%>
               <%if (query.view==manga_filter.index && manga_indices[manga_filter.index] && manga_indices[manga_filter.index].popular.length) {%>
             <div class="panel panel-default">
-              <div class="panel-heading" style="padding-bottom: 5px;padding-top: 5px;"><%=manga_filter.title%> <span class="badge"><%=manga_indices[manga_filter.index].count%></span></div>
+              <div class="panel-heading"><%=manga_filter.title%> <span class="badge"><%=manga_indices[manga_filter.index].count%></span></div>
               <div class="panel-body">
                 <ul class="nav nav-tabs">
                   <li class="active"><a data-toggle="tab" href="#tab-<%=manga_filter.index%>-popular">Popular</a></li>
@@ -278,8 +242,8 @@
             <%});%>
 
             <div id="view-search" class="tab-pane fade <%=(query.q||query.view=='search'||query.search)?'in active':''%>">
-            <div id="search-panel" class="panel panel-default">
-              <div class="panel-body">
+            <div id="search-panel" class="">
+              <div class="">
                 <div style="margin: 15px auto;">
                   <form id="search-manga-form" role="form" action="/" method="GET">
                     <div class="input-group">
@@ -313,7 +277,47 @@
         <div id="list-items-panel" class="panel panel-default <%=(manga_items.length)?'':'hidden'%>">
 
           <div class="panel-heading">
-            <h4>
+
+            <nav aria-label="breadcrumb" role="navigation">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/" title="All Manga"><i class="fa fa-book fa-fw"></i></a></li>
+                <%if (query.artist) {%>
+                <li class="breadcrumb-item">Artist: <span class="text-capitalize"><%=utils.replaceAll(query.artist,'-',' ')%></span></li>
+                <%} else if (query.author) {%>
+                <li class="breadcrumb-item">Author: <span class="text-capitalize"><%=utils.replaceAll(query.author,'-',' ')%></span></li>
+                <%} else if (query.category) {%>
+                <li class="breadcrumb-item">Category: <span class="text-capitalize"><%=utils.replaceAll(query.category,'-',' ')%></span></li>
+                <%} else if (query.genre) {%>
+                <li class="breadcrumb-item">Genre: <span class="text-capitalize"><%=utils.replaceAll(query.genre,'-',' ')%></span></li>
+                <%} else if (query.tag) {%>
+                <li class="breadcrumb-item">Tag: <span class="text-capitalize"><%=utils.replaceAll(query.tag,'-',' ')%></span></li>
+                <%} else if (query.parody) {%>
+                <li class="breadcrumb-item">Parody: <span class="text-capitalize"><%=utils.replaceAll(query.parody,'-',' ')%></span></li>
+                <%} else if (query.character) {%>
+                <li class="breadcrumb-item">Character: <span class="text-capitalize"><%=utils.replaceAll(query.character,'-',' ')%></span></li>
+                <%} else if (query.status) {%>
+                <li class="breadcrumb-item">Status: <span class="text-capitalize"><%=utils.replaceAll(query.status,'-',' ')%></span></li>
+                <%} else if (query.language) {%>
+                <li class="breadcrumb-item">Language: <span class="text-capitalize"><%=utils.replaceAll(query.language,'-',' ')%></span></li>
+                <%} else if (query.starts_with) {%>
+                <li class="breadcrumb-item">Starts with: <span class="text-capitalize"><%=query.starts_with%></span></li>
+                <%} else if (query.search) {%>
+                <li class="breadcrumb-item">Search: <%=query.search%></li>
+                <%} else if (query.view) {%>
+                <li class="breadcrumb-item"><span class="text-capitalize"><%=query.view%></span></li>
+                <%} else if (!query.from_dir) {%>
+                <li class="breadcrumb-item">Manga List</li>
+                <%}%>
+                <%if (query.from_dir) {%>
+                  <%parents.forEach(function(parent){%>
+                <li class="breadcrumb-item"><a href="/?from_dir=<%=encodeURIComponent(parent.path)%>"><%=parent.name%></a></li>
+                  <%});%>
+                <li class="breadcrumb-item"><%=path.basename(query.from_dir)%></li>
+                <%}%>
+              </ol>
+            </nav>
+
+            <h4 style="display: none;">
             <%var filtered = false;%>
             <%manga_filters.forEach(function(manga_filter) {%>
               <%if (query[manga_filter.param]) {%>
@@ -332,8 +336,13 @@
               <span> From: <a href="/?dir=<%=encodeURIComponent(query.from_dir)%>"><%=path.basename(query.from_dir)%></a></span>
             <%}%>
             </h4>
+
           </div>
           <div class="panel-body">
+            <h5>
+              <%if (items_count>1){%><span><%=items_count%> manga</span><%}else if (items_count==1){%><span><%=items_count%> manga</span><%}%>
+            </h5>
+              
             <div style="min-height: 40px;">
               <div style="float: right;height: 40px;">
               <div class="dropdown" style="display: inline-block;">
@@ -405,10 +414,6 @@
               </div>
               </div>
 
-              <h5>
-                <%if (items_count>1){%><span><%=items_count%> manga</span><%}else if (items_count==1){%><span><%=items_count%> manga</span><%}%>
-              </h5>
-              
               <%var query_skip = (query.skip ? parseInt(query.skip) : 0);%>
               <%var next_skip = query_skip+100;%>
 
@@ -693,21 +698,20 @@
         <%if (scope == 'manga_info') {%>
         <!-- manga_info - START -->
         <div class="row">
-        <div class="col-md-12">
-          <nav aria-label="breadcrumb" role="navigation">
-            <ol class="breadcrumb">
-              <li class="breadcrumb-item"><a href="/" title="All Manga"><i class="fa fa-book fa-fw"></i></a></li>
-              <%parents.forEach(function(parent){%>
-              <li class="breadcrumb-item"><a href="/?from_dir=<%=encodeURIComponent(parent.path)%>"><%=parent.name%></a></li>
-              <%});%>
-              <li class="breadcrumb-item"><%=manga.name%></li>
-            </ol>
-          </nav>
-        </div>
 
         <div class="col-md-12">
         <div class="panel panel-default">
-          <!-- <div class="panel-heading text-center"><%=manga.name%></div> -->
+          <div class="panel-heading">
+            <nav aria-label="breadcrumb" role="navigation">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/" title="All Manga"><i class="fa fa-book fa-fw"></i></a></li>
+                <%parents.forEach(function(parent){%>
+                <li class="breadcrumb-item"><a href="/?from_dir=<%=encodeURIComponent(parent.path)%>"><%=parent.name%></a></li>
+                <%});%>
+                <li class="breadcrumb-item"><%=manga.name%></li>
+              </ol>
+            </nav>
+          </div>
           <div class="panel-body">
             <div class="row">
               <div class="col-md-4 col-sm-12 col-xs-12">
