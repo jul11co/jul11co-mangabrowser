@@ -775,9 +775,13 @@ var startServer = function() {
     var page_size = query.page_size ? parseInt(query.page_size) : 100;
     var current_page = query.page ? parseInt(query.page) : 1;
 
-    query.limit = query.limit ? parseInt(query.limit) : 100;
-    query.skip = query.skip ? parseInt(query.skip) : 0;
+    query.limit = query.limit ? parseInt(query.limit) : page_size;
+    query.skip = query.skip ? parseInt(query.skip) : ((current_page-1)*page_size);
     
+    if (typeof query.page == 'undefined' && query.skip) {
+      current_page = Math.floor(query.skip/page_size) + 1;
+    }
+
     var page_count = Math.ceil(manga_items.length/page_size);
 
     var start_index = Math.min(query.skip, manga_items.length);
