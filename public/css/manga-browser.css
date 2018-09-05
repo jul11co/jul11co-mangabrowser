@@ -323,6 +323,11 @@ li.nav-head {
   text-align: center;
   vertical-align: top;
 }
+@media (max-width: 992px) {
+  .manga-grid-item {
+    width: calc(25% - 10px);
+  }
+}
 @media (max-width: 768px) {
   .manga-grid-item {
     width: calc(33% - 10px);
