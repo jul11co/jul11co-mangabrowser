@@ -24,6 +24,9 @@ var utils = require('jul11co-utils');
 var comicFile = require('./lib/comic-file');
 var photoFile = require('./lib/photo-file');
 
+var mangaUpdater = require('./lib/manga-updater');
+var fileUtils = require('./lib/file-utils');
+
 var package = require('./package.json');
 
 function printUsage() {
@@ -32,8 +35,7 @@ function printUsage() {
   console.log('');
   console.log('OPTIONS:');
   console.log('     --verbose                   : verbose');
-  console.log('     --check-exists              : check for file/folder existences');
-  console.log('     --no-thumbs                 : do not generate thumbnals');
+  console.log('     --no-thumbs                 : do not generate thumbnails');
   console.log('');
 }
 
@@ -102,7 +104,7 @@ if (options.index_file) {
 }
 
 var config = {
-  thumbnals: !(options.no_thumbs)
+  thumbnails: !(options.no_thumbs)
 };
 
 var all_dirs = [];
@@ -117,13 +119,19 @@ var COMIC_FILE_TYPES = ['cbz','cbr','zip'];
 var file_types_map = {};
 var popular_file_types = [];
 
+var all_files = [];
 var image_files = [];
 var video_files = [];
-var all_files = [];
 
 var manga_list = [];
 var manga_map = {};
 var manga_chapters_map = {};
+
+var manga_starts_with_map = {};
+var manga_starts_with_list = [];
+
+var stat_map = {};
+var comic_cache = {};
 
 var manga_searcher = false;
 var manga_search_opts = {
@@ -160,8 +168,19 @@ manga_filters.forEach(function(manga_filter) {
   manga_field_filter_map[manga_filter.field] = manga_filter;
 });
 
-var manga_starts_with_map = {};
-var manga_starts_with_list = [];
+var manga_hyphen_fields = [];
+var manga_indexing_fields = [];
+manga_filters.forEach(function(manga_filter) {
+  if (manga_filter.hyphen) {
+    manga_hyphen_fields.push(manga_filter.field);
+  }
+  if (manga_filter.index) {
+    manga_indexing_fields.push({
+      field: manga_filter.field,
+      index: manga_filter.index
+    });
+  }
+});
 
 if (options.listen_port) {
   options.listen_port = parseInt(options.listen_port);
@@ -171,19 +190,26 @@ if (options.listen_port) {
   }
 }
 
+var io = null;
+var index_reloading = false;
+
 var listen_port = options.listen_port || 31128;
 
-var cache_dir = path.join(process.env['HOME'], '.jul11co', 'mangabrowser', 'cache');
+var mangabrowser_conf_dir = path.join(utils.getUserHome(), '.jul11co', 'mangabrowser');
+
+var cache_dir = path.join(mangabrowser_conf_dir, 'cache');
 fse.ensureDirSync(cache_dir);
 
-var thumbs_dir = path.join(process.env['HOME'], '.jul11co', 'mangabrowser', 'thumbs');
+var thumbs_dir = path.join(mangabrowser_conf_dir, 'thumbs');
 fse.ensureDirSync(thumbs_dir);
 
-var db_dir = path.join(process.env['HOME'], '.jul11co', 'mangabrowser', 'databases');
+var db_dir = path.join(mangabrowser_conf_dir, 'databases');
 fse.ensureDirSync(db_dir);
 fse.ensureDirSync(path.join(db_dir, utils.md5Hash(data_dir)));
 
 var chapter_read_store = new JsonStore({file: path.join(db_dir, utils.md5Hash(data_dir), 'chapter_read.json')});
+
+var update_manga_queue = new JobQueue();
 
 ///
 
@@ -218,19 +244,24 @@ function isChapterRead(chapter_url) {
 }
 
 function setChapterRead(chapter_url, read_info) {
+  console.log('Read chapter:', chapter_url);
   chapter_read_store.set(utils.md5Hash(chapter_url), read_info || {last_read: new Date()});
 }
 
 ///
 
-function ellipsisMiddle(str, max_length, first_part, last_part) {
-  if (!max_length) max_length = 140;
-  if (!first_part) first_part = 40;
-  if (!last_part) last_part = 20;
-  if (str.length > max_length) {
-    return str.substr(0, first_part) + '...' + str.substr(str.length-last_part, str.length);
+var decodeQueryPath = function(query_path) {
+  var decoded_path = query_path;
+  try {
+    decoded_path = decodeURIComponent(query_path);
+  } catch (e) {
+    if (e instanceof URIError) {
+      decoded_path = query_path;
+    } else {
+      return null;
+    }
   }
-  return str;
+  return decoded_path;
 }
 
 var getParentDirs = function(_path, debug) {
@@ -272,29 +303,6 @@ var sortItems = function(items, field, order) {
   }
 }
 
-var checkDirExists = function(dir_path, exists_map) {
-  exists_map = exists_map || {};
-  if (dir_path == '/') return true;
-  if (typeof exists_map[dir_path] != 'undefined') {
-    return exists_map[dir_path];
-  }
-  if (!checkDirExists(path.dirname(dir_path), exists_map)) {
-    exists_map[dir_path] = false;
-    return false;
-  }
-  var exists = utils.directoryExists(dir_path);
-  exists_map[dir_path] = exists;
-  return exists;
-}
-
-var checkFileExists = function(file_path, exists_map) {
-  exists_map = exists_map || {};
-  if (!checkDirExists(path.dirname(file_path), exists_map)) {
-    return false;
-  }
-  return utils.fileExists(file_path);
-}
-
 ///
 
 var startServer = function() {
@@ -302,6 +310,9 @@ var startServer = function() {
   var session = require('express-session');
 
   var app = express();
+
+  var cookieParser = require('cookie-parser');
+  var bodyParser = require('body-parser');
 
   // view engine setup
   app.set('views', path.join(__dirname, 'views'));
@@ -311,6 +322,9 @@ var startServer = function() {
     resave: true,
     saveUninitialized: true
   }));
+  app.use(bodyParser.json());
+  app.use(bodyParser.urlencoded({extended: true}));
+  app.use(cookieParser());
   app.use(express.static(path.join(__dirname, 'public')))
 
   app.get('/info', function(req, res) {
@@ -321,26 +335,27 @@ var startServer = function() {
     });
   });
 
-  // GET /?dir=...
-  // GET /?files=1
-  // GET /?images=1
-  // GET /?videos=1
-  // GET /?file_type=...
+  // GET /files?dir=...
+  // GET /files?all=1
+  // GET /files?images=1
+  // GET /files?videos=1
+  // GET /files?file_type=...
   var fileBrowser = function(req, res) {
     var dirs = [];
     var files = [];
-
-    var dir_path = req.query.dir ? decodeURIComponent(req.query.dir) : '.';
-    if (abs_path_mode && dir_path == '.') dir_path = 'ROOT';
     var total_size = 0;
+
+    var dir_path = req.query.dir ? decodeQueryPath(req.query.dir) : '.';
+    if (abs_path_mode && dir_path == '.') dir_path = 'ROOT';
 
     var parents = [];
     if (req.query.from_dir) {
-      req.query.from_dir = decodeURIComponent(req.query.from_dir);
+      req.query.from_dir = decodeQueryPath(req.query.from_dir);
       dir_path = req.query.from_dir;
     }
 
-    if (dir_path != '.' && dir_path != 'ROOT') {
+    // if (dir_path != '.' && dir_path != 'ROOT') {
+    if (!isRootPath(dir_path)) {
       var dir_parents = getParentDirs(getAbsPath(dir_path));
       parents = dir_parents.map(function(parent_path) {
         return {path: getRelPath(parent_path), name: path.basename(parent_path)};
@@ -376,7 +391,7 @@ var startServer = function() {
         });
       }
     }
-    else if (req.query.files) {
+    else if (req.query.all) {
       if (req.query.from_dir) {
         var matched_files = all_files.filter(function(file_relpath) {
           return file_relpath.indexOf(req.query.from_dir) == 0;
@@ -443,11 +458,12 @@ var startServer = function() {
           count: dir_file_types_map[file_type].count
         });
       }
-      dir_file_types.sort(function(a,b) {
-        if (a.count>b.count) return -1;
-        if (a.count<b.count) return 1;
-        return 0;
-      });
+      // dir_file_types.sort(function(a,b) {
+      //   if (a.count>b.count) return -1;
+      //   if (a.count<b.count) return 1;
+      //   return 0;
+      // });
+      sortItems(dir_file_types, 'count', 'desc');
     }
 
     dirs.forEach(function(dir){ total_size += dir.size || 0; });
@@ -495,14 +511,10 @@ var startServer = function() {
     query.limit = query.limit ? parseInt(query.limit) : 100;
     query.skip = query.skip ? parseInt(query.skip) : 0;
     
-    // var start_index = Math.min(query.skip, files.length);
-    // var end_index = Math.min(query.skip + query.limit, files.length);
-    // var files_length = files.length;
-    // files = files.slice(start_index, end_index);
-
     var dirs_length = dirs.length;
     var files_length = files.length;
     var items_length = dirs_length + files_length;
+
     var start_index = Math.min(query.skip, items_length);
     var end_index = Math.min(query.skip + query.limit, items_length);
 
@@ -520,15 +532,13 @@ var startServer = function() {
       files = files.slice(start_index-dirs.length, end_index-dirs.length);
     }
     
-    if (options.check_exists) {
-      var exists_map = {};
-      dirs.forEach(function(dir) {
-        dir.missing = !checkDirExists(getAbsPath(dir.path), exists_map);
-      });
-      files.forEach(function(file) {
-        file.missing = !checkFileExists(getAbsPath(file.relpath), exists_map);
-      });
-    }
+    var exists_map = {};
+    dirs.forEach(function(dir) {
+      dir.missing = !fileUtils.checkDirExists(getAbsPath(dir.path), exists_map);
+    });
+    files.forEach(function(file) {
+      file.missing = !fileUtils.checkFileExists(getAbsPath(file.relpath), exists_map);
+    });
 
     res.render('file-browser', {
       config: config,
@@ -539,13 +549,14 @@ var startServer = function() {
       dir_path: dir_path,
       dir_name: path.basename(dir_path),
       dir_file_types: dir_file_types,
-      manga: manga_map[dir_path], // reference to manga of same dir
       total_size: total_size,
       items_length: items_length, // dirs_length + files_length
       dirs: dirs,
       dirs_length: dirs_length,
       files: files,
       files_length: files_length,
+      // reference to manga in the same dir
+      manga: manga_map[dir_path],
       // global
       manga_count: manga_list.length,
       files_count: all_files.length,
@@ -556,16 +567,15 @@ var startServer = function() {
       path: path,
       bytes: bytes,
       moment: moment,
-      ellipsisMiddle: ellipsisMiddle,
       utils: utils
     });
   };
 
-  var mangaBrowser = function(req, res) {
+  var mangaInfo = function(req, res) {
 
     var query = Object.assign({}, req.query);
 
-    var manga_relpath = decodeURIComponent(query.manga);
+    var manga_relpath = query.manga ? decodeQueryPath(query.manga) : decodeQueryPath(query.path);
     console.log('Load manga:', manga_relpath);
     var manga = Object.assign({}, manga_map[manga_relpath]);
 
@@ -588,7 +598,8 @@ var startServer = function() {
     manga.related = related_manga_items;
     
     var parents = [];
-    if (manga_relpath != '.' && manga_relpath != 'ROOT') {
+    // if (manga_relpath != '.' && manga_relpath != 'ROOT') {
+    if (!isRootPath(manga_relpath)) {
       var manga_parents = getParentDirs(getAbsPath(manga_relpath));
       parents = manga_parents.map(function(parent_path) {
         return {path: getRelPath(parent_path), name: path.basename(parent_path)};
@@ -622,18 +633,12 @@ var startServer = function() {
       path: path,
       bytes: bytes,
       moment: moment,
-      ellipsisMiddle: ellipsisMiddle,
       utils: utils
     });
   }
 
-  // GET /
-  app.get('/', function(req, res) {
-    if (req.query.dir || req.query.files || req.query.images || req.query.videos || req.query.file_type) {
-      return fileBrowser(req, res);
-    } else if (req.query.manga && req.query.manga != '.') {
-      return mangaBrowser(req, res);
-    } else if (req.query.view) {
+  var mangaList = function(req, res) {
+    if (req.query.view) {
       return res.render('manga-browser', {
         config: config,
         query: req.query,
@@ -658,7 +663,6 @@ var startServer = function() {
         path: path,
         bytes: bytes,
         moment: moment,
-        ellipsisMiddle: ellipsisMiddle,
         utils: utils
       });
     }
@@ -668,20 +672,29 @@ var startServer = function() {
     var manga_items = [];
 
     if (query.search) {
-      if (!manga_searcher) {
-        manga_searcher = new Fuse(manga_search_list, manga_search_opts);
-      }
-
-      // console.log('Search:', query.search);
-      var matched_manga_list = manga_searcher.search(query.search);
-      // console.log('Found:', matched_manga_list.length);
-
       if (manga_search_recent.length > 10) {
         manga_search_recent.pop();
       }
       if (manga_search_recent.indexOf(query.search) != 0) {
         manga_search_recent.unshift(query.search);
       }
+
+      if (!manga_searcher) {
+        manga_searcher = new Fuse(manga_search_list, manga_search_opts);
+      }
+
+      // console.log('Search:', query.search);
+      var matched_manga_list = manga_searcher.search(query.search);
+
+      var unique_manga_relpaths = [];
+      matched_manga_list = matched_manga_list.filter(function(matched_manga) {
+        if (matched_manga.relpath && unique_manga_relpaths.indexOf(matched_manga.relpath) == -1) {
+          unique_manga_relpaths.push(matched_manga.relpath);
+          return true;
+        }
+        return false;
+      });      
+      // console.log('Found:', matched_manga_list.length);
       
       manga_items = matched_manga_list.map(function(matched_manga) {
         return manga_map[matched_manga.relpath];
@@ -694,7 +707,7 @@ var startServer = function() {
 
     var parents = [];
     if (query.from_dir) {
-      query.from_dir = decodeURIComponent(query.from_dir);
+      query.from_dir = decodeQueryPath(query.from_dir);
 
       if (!isRootPath(query.from_dir)) {
         var parent_dirs = getParentDirs(getAbsPath(query.from_dir));
@@ -721,6 +734,11 @@ var startServer = function() {
         var is_string_array = manga_filter.data_type == 'string_array';
         manga_items = manga_items.filter(function(manga_item) {
           if (is_string_array) {
+            if (query_value.split(' ').length > 1) {
+              return query_value.split(' ').every(function(query_part) {
+                return manga_item[query_field].indexOf(query_part.trim()) >= 0;
+              });
+            }
             return manga_item[query_field] && manga_item[query_field].indexOf(query_value) >= 0;
           } else {
             return manga_item[query_field] == query_value;
@@ -738,6 +756,12 @@ var startServer = function() {
       }
     } else if (query.mangasort == 'last_update') {
       sortItems(manga_items, 'last_update', query.mangaorder || 'desc');
+      if (req.session) {
+        req.session.mangasort = query.mangasort;
+        req.session.mangaorder = query.mangaorder || 'desc';
+      }
+    } else if (query.mangasort == 'last_chapter_update') {
+      sortItems(manga_items, 'last_chapter_update', query.mangaorder || 'desc');
       if (req.session) {
         req.session.mangasort = query.mangasort;
         req.session.mangaorder = query.mangaorder || 'desc';
@@ -815,9 +839,40 @@ var startServer = function() {
       path: path,
       bytes: bytes,
       moment: moment,
-      ellipsisMiddle: ellipsisMiddle,
       utils: utils
     });
+  }
+
+  // GET /
+  app.get('/', function(req, res) {
+    if (req.query.dir || req.query.all || req.query.images || req.query.videos || req.query.file_type) {
+      return fileBrowser(req, res);
+    } else if (req.query.manga && req.query.manga != '.') {
+      return mangaInfo(req, res);
+    } else {
+      return mangaList(req, res);
+    }
+  });
+
+  // GET /files?dir=...
+  // GET /files?files=1
+  // GET /files?images=1
+  // GET /files?videos=1
+  // GET /files?file_type=1
+  app.get('/files', function(req, res) {
+    return fileBrowser(req, res);
+  });
+
+  // GET /manga?path=...
+  app.get('/manga', function(req, res) {
+    return mangaInfo(req, res);
+  });
+
+  // GET /mangalist?from_dir=...
+  // GET /mangalist?<FILTER>=...
+  // GET /mangalist?view=...
+  app.get('/mangalist', function(req, res) {
+    return mangaList(req, res);
   });
 
   app.get('/reload_index', function(req, res) {
@@ -829,27 +884,14 @@ var startServer = function() {
 
   // GET /open?path=...
   app.get('/open', function(req, res) {
-    var fpath = getAbsPath(decodeURIComponent(req.query.path));
+    var fpath = getAbsPath(decodeQueryPath(req.query.path));
     open(fpath);
     return res.json({ok: 1});
   });
 
-  var updateParentDirSize = function(frelpath) {
-    var parent_dirs = getParentDirs(getAbsPath(frelpath));
-    if (parent_dirs && parent_dirs.length) {
-      console.log(parent_dirs);
-      var dir_size_map = {};
-      parent_dirs.forEach(function(parent_dir) {
-        if (dirs_map[parent_dir]) {
-          dirs_map[parent_dir].size = getDirSize(parent_dir, dir_size_map);
-        }
-      });
-    }
-  }
-
   // POST /delete/path=...
   app.post('/delete', function(req, res) {
-    var frelpath = decodeURIComponent(req.query.path);
+    var frelpath = decodeQueryPath(req.query.path);
     var fpath = getAbsPath(frelpath);
 
     console.log('Delete path:', fpath);
@@ -899,7 +941,7 @@ var startServer = function() {
   });
 
   var getFile = function(req, res) {
-    var filepath = getAbsPath(decodeURIComponent(req.query.path));
+    var filepath = getAbsPath(decodeQueryPath(req.query.path));
     return res.sendFile(filepath);
   }
 
@@ -907,15 +949,13 @@ var startServer = function() {
   app.get('/file', getFile);
   app.get('/files/:filename', getFile);
 
-  var stat_map = {};
-
   // GET /video?path=...
   app.get('/video', function(req, res) {
-    var filepath = getAbsPath(decodeURIComponent(req.query.path));
-    if (!stat_map[filepath]) {
-      stat_map[filepath] = fs.statSync(filepath);
+    var filepath = getAbsPath(decodeQueryPath(req.query.path));
+    if (!file_stat_map[filepath]) {
+      file_stat_map[filepath] = fs.statSync(filepath);
     }
-    var stat = stat_map[filepath];
+    var stat = file_stat_map[filepath];
     var fileSize = stat.size
     var range = req.headers.range
 
@@ -954,14 +994,13 @@ var startServer = function() {
     }
   });
 
-  var comic_cache = {};
-
   // GET /comic?path=...
   // GET /comic?path=...&info=true
   // GET /comic?path=...&page=NUM
   app.get('/comic', function(req, res) {
     if (!req.query.path) return res.status(400).send({error: 'Missing file path'});
-    var filepath = getAbsPath(decodeURIComponent(req.query.path));
+    
+    var filepath = getAbsPath(decodeQueryPath(req.query.path));
     var filepath_hash = utils.md5Hash(filepath);
     
     if (req.query.page) {
@@ -969,9 +1008,15 @@ var startServer = function() {
       if (isNaN(page_num)) return res.status(400).send({error: 'Invalid page number'});
 
       var extractPage = function(page_file_name) {
+        var target_dir = path.join(cache_dir, 'contents', filepath_hash[0], 
+            filepath_hash[1]+filepath_hash[2], filepath_hash);
+
+        if (utils.fileExists(path.join(target_dir, page_file_name))) {
+          return res.sendFile(path.join(target_dir, page_file_name));
+        }
+        
         comicFile.extractPage(filepath, page_file_name, {
-          targetDir: path.join(cache_dir, 'contents', filepath_hash[0], 
-            filepath_hash[1]+filepath_hash[2], filepath_hash)
+          targetDir: target_dir
         }, function(err, page_file_path) {
           if (err) return res.status(500).send({error: 'Extract page failed! ' + err.message});
           if (!page_file_path) return res.status(500).send({error: 'Cannot extract page!'});
@@ -993,9 +1038,12 @@ var startServer = function() {
         });
       }
     } else {
+      var chapterpath = path.join(path.dirname(filepath), path.basename(filepath, path.extname(filepath)));
+      var chapterpath_hash = utils.md5Hash(chapterpath);
 
-      if (manga_chapters_map[filepath_hash] && manga_chapters_map[filepath_hash].url) {
-        setChapterRead(manga_chapters_map[filepath_hash].url);
+      var chapter_info = manga_chapters_map[chapterpath_hash];
+      if (chapter_info && chapter_info.url) {
+        setChapterRead(chapter_info.url);
       }
 
       if (comic_cache[filepath_hash]) return res.json(comic_cache[filepath_hash]);
@@ -1016,46 +1064,94 @@ var startServer = function() {
   // GET /manga_chapter?path=...&page=NUM
   app.get('/manga_chapter', function(req, res) {
     if (!req.query.path) return res.status(400).send({error: 'Missing file path'});
-    var chapterpath = decodeURIComponent(req.query.path);
+    
+    var chapterpath = decodeQueryPath(req.query.path);
     var chapterpath_abs = getAbsPath(chapterpath);
 
-    console.log('Chapter: ' + chapterpath);
+    // console.log('Chapter: ' + chapterpath);
     var chapterpath_hash = utils.md5Hash(chapterpath);
+    var chapter_info = manga_chapters_map[chapterpath_hash];
 
     if (req.query.page) {
       var page_num = parseInt(req.query.page);
       if (isNaN(page_num)) return res.status(400).send({error: 'Invalid page number'});
 
-      if (manga_chapters_map[chapterpath_hash] && manga_chapters_map[chapterpath_hash]['pages'] 
-        && manga_chapters_map[chapterpath_hash]['pages'].length>page_num) {
-        var page_file = manga_chapters_map[filepath_hash]['pages'][page_num].file;
+      if (chapter_info && chapter_info['pages'] && chapter_info['pages'].length > page_num) {
+        var page_file = chapter_info['pages'][page_num].file;
 
         if (page_file && utils.fileExists(path.join(chapterpath_abs, page_file))) {
           return res.sendFile(path.join(chapterpath_abs, page_file));
         }
         
-        var page_src = manga_chapters_map[filepath_hash]['pages'][page_num].src;
+        var page_src = chapter_info['pages'][page_num].src;
         return res.redirect('/image?src=' + encodeURIComponent(page_src) + '&reader=1');
       } else {
-        return res.status(404).send({error: 'Missing page: ' + page_num});
+        return res.status(404).send('Missing page: ' + page_num);
       }
     } else {
-      if (!manga_chapters_map[chapterpath_hash]) {
-        return res.status(404).send({error: 'Chapter not found: ' + chapterpath});
+      if (!chapter_info) {
+        return res.status(404).send('Chapter not found: ' + chapterpath);
       }
 
-      if (manga_chapters_map[chapterpath_hash].url) {
-        setChapterRead(manga_chapters_map[chapterpath_hash].url)
+      if (chapter_info.url) {
+        setChapterRead(chapter_info.url)
       }
 
-      return res.json(manga_chapters_map[chapterpath_hash]);
+      return res.json(chapter_info);
     }
+  });
+
+  // POST /disable_manga_update?path=...
+  app.post('/disable_manga_update', function(req, res) {
+    if (!req.query.path) return res.status(400).json({error: 'Missing manga path'});
+    var manga_path = getAbsPath(decodeQueryPath(req.query.path));
+
+    var saver_file = path.join(manga_path, 'saver.json');
+    if (!utils.fileExists(saver_file)) {
+      return res.status(500).json({error: 'Cannot disable manga update'});
+    }
+
+    var saver_state = utils.loadFromJsonFile(saver_file);
+    saver_state['ignore'] = true;
+
+    utils.saveToJsonFile(saver_state, saver_file);
+ 
+    var manga_relpath = getRelPath(manga_path);
+    if (manga_map[manga_relpath]) {
+      manga_map[manga_relpath]['update_enable'] = false;
+    }
+
+    res.json({success: true});
+  });
+
+  // POST /enable_manga_update?path=...
+  app.post('/enable_manga_update', function(req, res) {
+    if (!req.query.path) return res.status(400).json({error: 'Missing manga path'});
+    var manga_path = getAbsPath(decodeQueryPath(req.query.path));
+    
+    var saver_file = path.join(manga_path, 'saver.json');
+    if (!utils.fileExists(saver_file)) {
+      return res.status(500).json({error: 'Cannot disable manga update'});
+    }
+
+    var saver_state = utils.loadFromJsonFile(saver_file);
+    saver_state['ignore'] = false;
+
+    utils.saveToJsonFile(saver_state, saver_file);
+ 
+    var manga_relpath = getRelPath(manga_path);
+    if (manga_map[manga_relpath]) {
+      manga_map[manga_relpath]['update_enable'] = true;
+    }
+
+    res.json({success: true});
   });
 
   // GET /thumb?path=...
   app.get('/thumb', function(req, res) {
     if (!req.query.path) return res.status(400).send({error: 'Missing file path'});
-    var filepath = getAbsPath(decodeURIComponent(req.query.path));
+    
+    var filepath = getAbsPath(decodeQueryPath(req.query.path));
     var filepath_hash = utils.md5Hash(filepath);
     
     var thumb_filepath = path.join(thumbs_dir, filepath_hash[0], 
@@ -1148,105 +1244,228 @@ var startServer = function() {
   app.get('/image', cacheImage);
   app.get('/images/:name', cacheImage);
 
-  var startListen = function() {
-    app.listen(listen_port, function () {
-      console.log('Listening on http://localhost:'+listen_port);
-      if (!options.no_open) open('http://localhost:'+listen_port);
+  // Viewer
+
+  // GET /viewer?path=...
+  app.get('/viewer', function(req, res) {
+    return res.render('manga-viewer.ejs', {
+      error: null,
+      manga: { path: req.query.path },
+      view_settings: req.cookies,
+      // helpers
+      path: path,
+      bytes: bytes,
+      moment: moment,
+      utils: utils
+    });
+  });
+
+  // GET /viewer_json?path=...
+  app.get('/viewer_json', function(req, res, next) {
+    var datapath = decodeQueryPath(req.query.path);
+
+    // console.log('Viewer JSON:', datapath);
+
+    var manga = manga_map[datapath];
+
+    if (manga) { // manga info
+      return res.json({
+        page: {
+          url: datapath,
+          manga: {
+            url: manga.relpath || datapath,
+            name: manga.name,
+            chapters: manga.chapters.map(function(chapter_info) {
+              return {
+                url: chapter_info.output_dir, // reference to chapter in manga_chapters_map
+                title: chapter_info.title,
+                pages_count: chapter_info.pages_count
+              }
+            })
+          }
+        }
+      });
+    } else {
+      var chapter_path = datapath;
+      var chapter_path_hash = utils.md5Hash(chapter_path);
+
+      var manga_path = path.dirname(datapath);
+      var manga = manga_map[manga_path];
+
+      // console.log('Manga:', manga_path);
+
+      var chapter_info = manga_chapters_map[chapter_path_hash];
+      if (chapter_info) { // manga chapters
+        var chapter_images = [];
+
+        // console.log('Chapter:', datapath);
+
+        if (chapter_info.cbz_file && utils.fileExists(chapter_info.cbz_file)) {
+          // console.log('CBZ:', chapter_info.cbz_file);
+
+          if (comic_cache[chapter_path_hash]) {
+            chapter_images = comic_cache[chapter_path_hash].pages.map(function(chapter_page, idx) {
+              return {
+                src: '/comic?path=' + encodeURIComponent(chapter_info.cbz_file) + '&page=' + idx 
+              }
+            });
+
+            return res.json({
+              page: {
+                url: datapath,
+                manga: {
+                  url: manga ? manga.relpath : manga_path,
+                  title: manga ? manga.name : path.basename(manga_path),
+                  chapter_url: chapter_path,
+                  chapter_title: chapter_info.title,
+                  images: chapter_images
+                }
+              }
+            });
+          }
+
+          comicFile.getInfo(chapter_info.cbz_file, function(err, result) {
+            if (err) return res.status(500).send({error: 'Get file info failed! ' + err.message});
+            if (!result) return res.status(500).send({error: 'Cannot get file info!'});
+            
+            // console.log(result);
+
+            comic_cache[chapter_path_hash] = result;
+
+            chapter_images = result.pages.map(function(chapter_page, idx) {
+              return {
+                src: '/comic?path=' + encodeURIComponent(chapter_info.cbz_file) + '&page=' + idx 
+              }
+            });
+
+            if (chapter_info.url) {
+              setChapterRead(chapter_info.url);
+            }
+
+            return res.json({
+              page: {
+                url: datapath,
+                manga: {
+                  url: manga ? manga.relpath : manga_path,
+                  title: manga ? manga.name : path.basename(manga_path),
+                  chapter_url: chapter_path,
+                  chapter_title: chapter_info.title,
+                  images: chapter_images
+                }
+              }
+            });
+          });
+        } else {
+          chapter_images = chapter_info.pages.map(function(chapter_page, idx) {
+            return {
+              src: '/manga_chapter?path=' + encodeURIComponent(datapath) + '&page=' + idx 
+            }
+          });
+
+          if (chapter_info.url) {
+            setChapterRead(chapter_info.url);
+          }
+
+          return res.json({
+            page: {
+              url: datapath,
+              manga: {
+                url: manga ? manga.relpath : manga_path,
+                title: manga ? manga.name : path.basename(manga_path),
+                chapter_url: chapter_path,
+                chapter_title: chapter_info.title,
+                images: chapter_images
+              }
+            }
+          });
+        }
+      } else {
+        console.log('No chapter:', chapter_path);
+        return res.status(404).json({});
+      }
+    }
+  });
+
+  ///
+
+  var startIoServer = function(server) {
+    io = require('socket.io')(server);
+    io.on('connection', function(socket) {
+      socket.on('reload-index', function(data) {
+        console.log('Reload index requested!');
+        reloadIndex(function(err) {
+          if (err) {
+            console.log(err.message);
+          } else {
+            console.log('Index reloaded');
+          }
+        });
+      });
+
+      socket.on('update-manga', function(data) {
+        if (data && data.path) {
+          console.log('Update manga requested!', data.path);
+
+          update_manga_queue.pushJob({
+            manga_path: data.path
+          }, function(args, done) {
+            var manga = manga_map[args.manga_path];
+            if (!manga) {
+              return done(new Error('Non-existing manga'));
+            }
+              
+            io.emit('update-manga-start', { path: args.manga_path });
+
+            updateManga(manga, { ignore_last_update: true }, done);
+          }, function(err) {
+            if (err) {
+              console.error(err);
+
+              io.emit('update-manga-result', {
+                path: data.path,
+                error: err.message
+              });
+            } else {
+              io.emit('update-manga-result', {
+                path: data.path,
+                success: true
+              });
+            }
+          });
+
+          io.emit('update-manga-queued', { path: data.path });
+        }
+      });
+    });
+  }
+
+  var startListen = function(done) {
+    var server = app.listen(listen_port, function () {
+      done(null, server);
     }).on('error', function(err) {
-    if (err.code == 'EADDRINUSE') {
+      if (err.code == 'EADDRINUSE') {
         setTimeout(function() {
           listen_port = listen_port + 1;
-          startListen();
+          startListen(done);
         });
       } else {
-        console.log(err);
+        done(err);
       }
     });
   }
 
-  startListen();
+  startListen(function(err, server) {
+    if (!err) {
+      console.log('Listening on http://localhost:'+listen_port);
+      if (!options.no_open) open('http://localhost:'+listen_port);
+      startIoServer(server);
+    } else {
+      console.log(err);
+    }
+  });
 }
 
 ///
-
-var scanDir = function(dir_path, options, callback) {
-  if (typeof options == 'function') {
-    callback = options;
-    options = {};
-  }
-
-  // console.log(chalk.magenta('Directory:'), ellipsisMiddle(dir_path));
-
-  var dirlist = [];
-  var filelist = [];
-
-  fs.readdir(dir_path, function(err, files) {
-    if (err) return callback(err);
-
-    async.eachSeries(files, function(file, cb) {
-      
-      if (file == '.DS_Store') return cb();
-
-      var file_path = path.join(dir_path, file);
-
-      var stats = undefined;
-      try {
-        stats = fs.lstatSync(file_path);
-      } catch(e) {
-        console.log(e);
-        return cb();
-      }
-      if (!stats) return cb();
-      
-      // console.log(stats);
-      if (stats.isFile()) {
-        if (file.indexOf('.') == 0) {
-          return cb();
-        }
-        
-        if (options.min_file_size && stats['size'] < min_file_size) return cb();
-
-        var file_type = path.extname(file).replace('.','').toLowerCase();
-        if (options.file_types && options.file_types.indexOf(file_type) == -1) return cb();
-
-        var file_info = {
-          path: file_path,
-          name: file,
-          type: file_type,
-          size: stats['size'],
-          atime: stats['atime'],
-          mtime: stats['mtime'],
-          ctime: stats['ctime']
-        };
-
-        filelist.push(file_info);
-        cb();
-      } else if (stats.isDirectory() && options.recursive) {
-
-        dirlist.push({
-          path: file_path,
-          name: file,
-          atime: stats['atime'],
-          mtime: stats['mtime'],
-          ctime: stats['ctime']
-        });
-
-        scanDir(file_path, options, function(err, files, dirs) {
-          if (err) return cb(err);
-
-          filelist = filelist.concat(files);
-          dirlist = dirlist.concat(dirs);
-
-          cb();
-        });
-      } else {
-        cb();
-      }
-    }, function(err) {
-      callback(err, filelist, dirlist);
-    });
-  });
-}
 
 var addDirToMap = function(dir) {
   var dir_path = dir.path;
@@ -1266,7 +1485,7 @@ var addDirToMap = function(dir) {
   if (dir.mtime) dirs_map[dir_relpath].mtime = dir.mtime;
   if (dir.ctime) dirs_map[dir_relpath].ctime = dir.ctime;
 
-  if (dir_path != 'ROOT' && !isRootPath(dir_path)) {
+  if (/*dir_path != 'ROOT' && */!isRootPath(dir_path)) {
     var parent_dir_entry = addDirToMap({ path: path.dirname(dir_path) });
     if (parent_dir_entry.subdirs.indexOf(dir_relpath) == -1) {
       parent_dir_entry.subdirs.push(dir_relpath);
@@ -1308,6 +1527,26 @@ var getDirSize = function(dir_relpath, dir_size_map) {
   return dir_size;
 }
 
+var updateParentDirSize = function(frelpath) {
+  var parent_dirs = getParentDirs(getAbsPath(frelpath));
+  if (parent_dirs && parent_dirs.length) {
+    // console.log(parent_dirs);
+    var dir_size_map = {};
+    parent_dirs.forEach(function(parent_dir) {
+      if (dirs_map[parent_dir]) {
+        dirs_map[parent_dir].size = getDirSize(parent_dir, dir_size_map);
+      }
+    });
+  }
+}
+
+var recalculateDirsSize = function() {
+  // calculate directory size
+  for(var dir_relpath in dirs_map) {
+    dirs_map[dir_relpath].size = getDirSize(dir_relpath);
+  }
+}
+
 var createDirsIndex = function(dirs) {
   console.log('Dirs:', dirs.length);
 
@@ -1316,10 +1555,38 @@ var createDirsIndex = function(dirs) {
   });
 }
 
-var recalculateDirsSize = function() {
-  // calculate directory size
-  for(var dir_relpath in dirs_map) {
-    dirs_map[dir_relpath].size = getDirSize(dir_relpath);
+var addFileToMap = function(file) {
+
+  file.relpath = getRelPath(file.path);
+  file.type = (file.type) ? file.type.toLowerCase() : '';
+
+  files_map[file.relpath] = file;
+  all_files.push(file.relpath);
+
+  if (IMAGE_FILE_TYPES.indexOf(file.type) != -1) {
+    file.is_image = true;
+    image_files.push(file.relpath);
+  } else if (VIDEO_FILE_TYPES.indexOf(file.type) != -1) {
+    file.is_video = true;
+    video_files.push(file.relpath);
+  } else if (COMIC_FILE_TYPES.indexOf(file.type) != -1) {
+    file.is_comic = true;
+  }
+
+  if (file.type && file.type != '') {
+    if (!file_types_map[file.type]) {
+      file_types_map[file.type] = {};
+      file_types_map[file.type].count = 0;
+      file_types_map[file.type].files = [];
+    }
+    file_types_map[file.type].count++;
+    file_types_map[file.type].files.push(file.relpath);
+  }
+  
+  var parent_dir_entry = addDirToMap({ path: path.dirname(file.path) });
+  if (parent_dir_entry.files.indexOf(file.relpath) == -1) {
+    parent_dir_entry.size += file.size;
+    parent_dir_entry.files.push(file.relpath);
   }
 }
 
@@ -1334,41 +1601,7 @@ var createFilesIndex = function(files) {
   console.log('Total Size:', bytes(total_files_size));
 
   files.forEach(function(file) {
-
-    file.relpath = getRelPath(file.path);
-    file.type = (file.type) ? file.type.toLowerCase() : '';
-
-    files_map[file.relpath] = file;
-
-    if (IMAGE_FILE_TYPES.indexOf(file.type) != -1) {
-      file.is_image = true;
-      image_files.push(file.relpath);
-    } else if (VIDEO_FILE_TYPES.indexOf(file.type) != -1) {
-      file.is_video = true;
-      video_files.push(file.relpath);
-    } else if (COMIC_FILE_TYPES.indexOf(file.type) != -1) {
-      file.is_comic = true;
-    }
-    all_files.push(file.relpath);
-
-    if (file.type && file.type != '') {
-      if (!file_types_map[file.type]) {
-        file_types_map[file.type] = {};
-        file_types_map[file.type].count = 0;
-        file_types_map[file.type].files = [];
-      }
-      file_types_map[file.type].count++;
-      file_types_map[file.type].files.push(file.relpath);
-    }
-    
-    var parent_dir_entry = addDirToMap({ path: path.dirname(file.path) });
-    if (parent_dir_entry.files.indexOf(file.relpath) == -1) {
-      parent_dir_entry.size += file.size;
-      parent_dir_entry.files.push(file.relpath);
-    }
-
-    // console.log('File:', file.relpath);
-    // console.log('Dir:', dir_relpath);
+    addFileToMap(file);
   });
 
   // get popular file types
@@ -1376,11 +1609,12 @@ var createFilesIndex = function(files) {
   for(var file_type in file_types_map) {
     file_types.push({type: file_type, count: file_types_map[file_type].count});
   }
-  file_types.sort(function(a,b) {
-    if (a.count>b.count) return -1;
-    if (a.count<b.count) return 1;
-    return 0;
-  });
+  // file_types.sort(function(a,b) {
+  //   if (a.count>b.count) return -1;
+  //   if (a.count<b.count) return 1;
+  //   return 0;
+  // });
+  sortItems(file_types, 'count', 'desc');
   if (file_types.length > 10) popular_file_types = file_types.slice(0, 10);
   else popular_file_types = file_types.slice(0);
 }
@@ -1421,7 +1655,7 @@ var generateIndexPopularList = function() {
   }
 }
 
-var loadMangaInfo = function(manga_info_file, hyphen_fields) {
+var loadMangaInfoFromFile = function(manga_info_file) {
   var manga_info = utils.loadFromJsonFile(manga_info_file);
 
   for (var field in manga_info) {
@@ -1438,7 +1672,7 @@ var loadMangaInfo = function(manga_info_file, hyphen_fields) {
   }
 
   // refine values
-  hyphen_fields.forEach(function(field) {
+  manga_hyphen_fields.forEach(function(field) {
     if (manga_info[field] && Array.isArray(manga_info[field])) {
       manga_info[field] = manga_info[field].map(function(val) {
         return utils.replaceAll(val, ' ', '-').toLowerCase();
@@ -1451,6 +1685,176 @@ var loadMangaInfo = function(manga_info_file, hyphen_fields) {
   return manga_info;
 }
 
+var loadMangaInfo = function(manga_dir, saver_file_name) {
+  var manga_info = {};
+
+  var manga_info_file = getAbsPath(path.join(manga_dir, 'manga.json'));
+  if (utils.fileExists(manga_info_file)) {
+    manga_info = loadMangaInfoFromFile(manga_info_file);
+  }
+
+  manga_info.relpath = getRelPath(manga_dir);
+
+  if (!manga_info.name) {
+    manga_info.name = path.basename(manga_info.relpath);
+  }
+
+  saver_file_name = saver_file_name || 'saver.json';
+  var saver_file = getAbsPath(path.join(manga_dir, saver_file_name));
+  if (!utils.fileExists(saver_file)) {
+    return;
+  }
+
+  var saver_state = utils.loadFromJsonFile(saver_file);
+
+  if (!manga_info.url && saver_state['url']) {
+    manga_info.url = saver_state['url'];
+  }
+
+  if (saver_state['ignore']) {
+    manga_info.update_enable = false;
+  } else {
+    manga_info.update_enable = true;
+  }
+
+  if (saver_state['last_update']) {
+    manga_info.last_update = new Date(saver_state['last_update']);
+  }
+
+  // console.log(manga_info);
+  manga_info.last_chapter_update = 0;
+
+  var missing_chapters_count = 0;
+  manga_info.chapters = [];
+
+  for (var entry_url in saver_state) {
+    var entry_info = saver_state[entry_url];
+    if (entry_info.chapter_title && entry_info.chapter_images && entry_info.output_dir) {
+      var chapter_info = {
+        url: entry_url,
+        title: entry_info.chapter_title,
+        last_update: new Date(entry_info.last_update),
+        pages_count: entry_info.chapter_images.length,
+        output_dir: path.join(manga_info.relpath, entry_info.output_dir),
+        cbz_file: path.join(manga_info.relpath, entry_info.output_dir + '.cbz')
+      };
+
+      if (chapter_info.last_update && chapter_info.last_update > manga_info.last_chapter_update) {
+        manga_info.last_chapter_update = chapter_info.last_update;
+      }
+
+      chapter_info.title_lc = chapter_info.title.toLowerCase();
+
+      if (utils.fileExists(getAbsPath(chapter_info.cbz_file))) {
+        chapter_info.type = 'cbz';
+        chapter_info.cbz_exists = true;
+
+        chapter_info.pages_count = entry_info.chapter_images.length;
+        chapter_info.pages = entry_info.chapter_images.slice();
+
+        if (files_map[chapter_info.cbz_file]) {
+          chapter_info.cbz_size = files_map[chapter_info.cbz_file].size;
+          chapter_info.cbz_mtime = files_map[chapter_info.cbz_file].mtime;
+        } else {
+          var cbz_file_stats = fileUtils.getFileStatsSync(getAbsPath(chapter_info.cbz_file));
+          chapter_info.cbz_size = cbz_file_stats['size'];
+          chapter_info.cbz_mtime = cbz_file_stats['mtime'];
+
+          addFileToMap({
+            path: getAbsPath(chapter_info.cbz_file),
+            name: path.basename(chapter_info.cbz_file),
+            type: 'cbz',
+            size: cbz_file_stats['size'],
+            atime: cbz_file_stats['atime'],
+            mtime: cbz_file_stats['mtime'],
+            ctime: cbz_file_stats['ctime']
+          });
+        }
+
+      } else {
+        missing_chapters_count++;
+        chapter_info.type = 'remote';
+
+        chapter_info.pages_count = entry_info.chapter_images.length;
+        chapter_info.pages = entry_info.chapter_images.slice();
+      }
+
+      var chapter_hash = utils.md5Hash(chapter_info.output_dir);
+
+      manga_chapters_map[chapter_hash] = {
+        output_dir: chapter_info.output_dir,
+        url: chapter_info.url,
+        title: chapter_info.title,
+        title_lc: chapter_info.title_lc,
+        pages_count: chapter_info.pages_count,
+        pages: chapter_info.pages,
+        cbz_file: chapter_info.cbz_file
+      }
+
+      manga_info.chapters.push(chapter_info);
+    }
+  }
+
+  manga_info.chapters_count = manga_info.chapters.length;
+  manga_info.chapters_missing = missing_chapters_count;
+
+  return manga_info;
+}
+
+var addManga = function(saver_file) {
+  var manga_info = loadMangaInfo(path.dirname(saver_file.path), saver_file.name);
+
+  if (!manga_info.last_update && saver_file['mtime']) {
+    manga_info.last_update = new Date(saver_file['mtime']);
+  }
+
+  if (manga_info.chapters_count > 0) {
+    if (manga_info.chapters.length) {
+      sortItems(manga_info.chapters, 'title_lc', 'desc');
+    }
+
+    manga_map[manga_info.relpath] = manga_info;
+    manga_list.push(manga_info.relpath);
+    
+    manga_search_list.push({
+      name: manga_info.name,
+      relpath: manga_info.relpath
+    });
+
+    if (manga_info.alt_names && manga_info.alt_names.length) {
+      manga_info.alt_names.forEach(function(alt_name) {
+        manga_search_list.push({
+          name: alt_name,
+          relpath: manga_info.relpath
+        });
+      });
+    }
+
+    var first_letter = manga_info.name.charAt(0).toUpperCase();
+    if (first_letter.match(/[A-Z]/)) {
+      manga_info.first_letter = first_letter;
+      manga_starts_with_map[first_letter] = manga_starts_with_map[first_letter] || 0;
+      manga_starts_with_map[first_letter]++;
+    } else {
+      manga_info.first_letter = '~';
+      manga_starts_with_map['~'] = manga_starts_with_map['~'] || 0;
+      manga_starts_with_map['~']++;
+    }
+
+    manga_indexing_fields.forEach(function(index_field) {
+      if (typeof manga_info[index_field.field] == 'string') {
+        addToMangaIndex(index_field.index, manga_info[index_field.field]);
+      } else if (Array.isArray(manga_info[index_field.field])) {
+        manga_info[index_field.field].forEach(function(item) {
+          addToMangaIndex(index_field.index, item);
+        });
+      }
+    });
+  }
+
+  return manga_info;
+}
+
 var createMangaIndex = function(files) {
   
   var saver_files = files.filter(function(file) {
@@ -1459,150 +1863,10 @@ var createMangaIndex = function(files) {
 
   console.log('Loading manga:', saver_files.length);
 
-  var mangaInfoMap = function(manga_info, field) {
-    var items = [];
-    manga_info[field].forEach(function(item) {
-      if (item.name) items.push(item.name.trim());
-      else if (typeof item == 'string') items.push(item.trim());
-    });
-    return items;
-  }
+  saver_files.forEach(function(saver_file, idx) {
+    var manga_info = addManga(saver_file);
 
-  var hyphen_fields = [];
-  var indexing_fields = [];
-  manga_filters.forEach(function(manga_filter) {
-    if (manga_filter.hyphen) {
-      hyphen_fields.push(manga_filter.field);
-    }
-    if (manga_filter.index) {
-      indexing_fields.push({
-        field: manga_filter.field,
-        index: manga_filter.index
-      });
-    }
-  });
-
-  saver_files.forEach(function(file, idx) {
-
-    var saver_state = utils.loadFromJsonFile(file.path);
-    
-    if (saver_state['url']) {
-      var manga_info = {};
-
-      var manga_info_file = getAbsPath(path.join(path.dirname(file.relpath), 'manga.json'));
-      if (utils.fileExists(manga_info_file)) {
-        manga_info = loadMangaInfo(manga_info_file, hyphen_fields);
-      } else {
-        manga_info.url = saver_state['url'];
-      }
-
-      manga_info.relpath = path.dirname(file.relpath);
-
-      console.log((idx+1) + '/' + saver_files.length, 'Manga:', manga_info.relpath);
-
-      if (!manga_info.name) {
-        manga_info.name = path.basename(manga_info.relpath);
-      }
-      if (saver_state['last_update']) {
-        manga_info.last_update = new Date(saver_state['last_update']);
-      }
-
-      // console.log(manga_info);
-
-      var missing_chapters_count = 0;
-      manga_info.chapters = [];
-      for (var entry in saver_state) {
-        if (saver_state[entry].chapter_title && saver_state[entry].chapter_images 
-          && saver_state[entry].output_dir) {
-          var chapter_info = {
-            url: entry,
-            title: saver_state[entry].chapter_title,
-            last_update: saver_state[entry].last_update,
-            pages_count: saver_state[entry].chapter_images.length,
-            output_dir: path.join(manga_info.relpath, saver_state[entry].output_dir),
-            cbz_file: path.join(manga_info.relpath, saver_state[entry].output_dir + '.cbz')
-          };
-
-          if (utils.fileExists(getAbsPath(chapter_info.cbz_file))) {
-            chapter_info.type = 'cbz';
-            chapter_info.cbz_exists = true;
-
-            manga_chapters_map[utils.md5Hash(chapter_info.cbz_file)] = {
-              url: chapter_info.url,
-              title: chapter_info.title,
-              pages_count: saver_state[entry].chapter_images.length
-            }
-          } else if (utils.fileExists(getAbsPath(chapter_info.output_dir))) {
-            chapter_info.type = 'folder';
-            chapter_info.folder_exists = true;
-
-            manga_chapters_map[utils.md5Hash(chapter_info.output_dir)] = {
-              url: chapter_info.url,
-              title: chapter_info.title,
-              pages_count: saver_state[entry].chapter_images.length,
-              pages: saver_state[entry].chapter_images.slice()
-            }
-          } else {
-            missing_chapters_count++;
-            chapter_info.type = 'remote';
-
-            manga_chapters_map[utils.md5Hash(chapter_info.output_dir)] = {
-              url: chapter_info.url,
-              title: chapter_info.title,
-              pages_count: saver_state[entry].chapter_images.length,
-              pages: saver_state[entry].chapter_images.slice()
-            }
-          }
-
-          if (files_map[chapter_info.cbz_file]) {
-            chapter_info.cbz_size = files_map[chapter_info.cbz_file].size;
-            chapter_info.cbz_mtime = files_map[chapter_info.cbz_file].mtime;
-          }
-
-          manga_info.chapters.push(chapter_info);
-        }
-      }
-
-      manga_info.chapters_count = manga_info.chapters.length;
-      manga_info.chapters_missing = missing_chapters_count;
-
-      if (manga_info.chapters_count > 0) {
-
-        if (manga_info.chapters.length) {
-          sortItems(manga_info.chapters, 'title', 'desc');
-        }
-
-        manga_map[manga_info.relpath] = manga_info;
-        manga_list.push(manga_info.relpath);
-        manga_search_list.push({
-          name: manga_info.name,
-          relpath: manga_info.relpath
-        });
-
-        var first_letter = manga_info.name.charAt(0).toUpperCase();
-        if (first_letter.match(/[A-Z]/)) {
-          manga_info.first_letter = first_letter;
-          manga_starts_with_map[first_letter] = manga_starts_with_map[first_letter] || 0;
-          manga_starts_with_map[first_letter]++;
-        } else {
-          manga_info.first_letter = '~';
-          manga_starts_with_map['~'] = manga_starts_with_map['~'] || 0;
-          manga_starts_with_map['~']++;
-        }
-
-        indexing_fields.forEach(function(index_field) {
-          if (typeof manga_info[index_field.field] == 'string') {
-            addToMangaIndex(index_field.index, manga_info[index_field.field]);
-          } else if (Array.isArray(manga_info[index_field.field])) {
-            manga_info[index_field.field].forEach(function(item) {
-              addToMangaIndex(index_field.index, item);
-            });
-          }
-        });
-      }
-    }
-
-    saver_state = {};
+    console.log((idx+1) + '/' + saver_files.length, 'Manga:', manga_info.relpath);
   });
 
   manga_starts_with_list = [];
@@ -1618,6 +1882,40 @@ var createMangaIndex = function(files) {
 
 ///
 
+var resetIndex = function() {
+  all_dirs = [];
+
+  dirs_map = {};
+  files_map = {};
+
+  file_types_map = {};
+  popular_file_types = [];
+
+  all_files = [];
+  image_files = [];
+  video_files = [];
+
+  manga_list = [];
+  manga_map = {};
+  manga_chapters_map = {};
+
+  manga_searcher = false;
+  manga_search_list = [];
+
+  manga_indices = {};
+
+  manga_starts_with_map = {};
+  manga_starts_with_list = [];
+}
+
+var createIndex = function(dirs, files) {
+  createDirsIndex(dirs);
+  createFilesIndex(files);
+  recalculateDirsSize();
+
+  createMangaIndex(files);
+}
+
 var loadIndex = function(callback) {
 
   if (options.index_file) {
@@ -1632,7 +1930,6 @@ var loadIndex = function(callback) {
     var files = [];
 
     for (var file_relpath in tmp_files_map) {
-      // console.log('File:', file_relpath);
 
       var file_info = tmp_files_map[file_relpath];
 
@@ -1646,7 +1943,6 @@ var loadIndex = function(callback) {
 
       var dir_path = path.dirname(file_info.path);
       if (!tmp_dirs_map[dir_path]) {
-        // console.log('Dir:', dir_path);
         tmp_dirs_map[dir_path] = {
           path: dir_path
         }
@@ -1654,11 +1950,9 @@ var loadIndex = function(callback) {
       }
     }
 
-    createDirsIndex(dirs);
-    createFilesIndex(files);
-    recalculateDirsSize();
+    resetIndex();
 
-    createMangaIndex(files);
+    createIndex(dirs, files);
 
     return callback();
   } 
@@ -1672,7 +1966,7 @@ var loadIndex = function(callback) {
 
     async.eachSeries(data_dirs, function(input_dir, cb) {
       console.log('Scan: ' + input_dir);
-      scanDir(input_dir, scan_opts, function(err, _files, _dirs) {
+      fileUtils.scanDir(input_dir, scan_opts, function(err, _files, _dirs) {
         if (err) {
           console.log('Scan dir error!', input_dir);
           return cb(err);
@@ -1691,11 +1985,9 @@ var loadIndex = function(callback) {
         return callback(err);
       }
 
-      createDirsIndex(dirs);
-      createFilesIndex(files);
-      recalculateDirsSize();
+      resetIndex();
 
-      createMangaIndex(files);
+      createIndex(dirs, files);
 
       return callback();
     });
@@ -1704,18 +1996,16 @@ var loadIndex = function(callback) {
     var scan_opts = {recursive: true};
 
     console.log('Scanning input dir...');
-    scanDir(data_dir, scan_opts, function(err, files, dirs) {
+    fileUtils.scanDir(data_dir, scan_opts, function(err, files, dirs) {
       if (err) {
         console.log('Scan dir error!', data_dir);
         console.log(err);
         return callback(err);
       }
-      
-      createDirsIndex(dirs);
-      createFilesIndex(files);
-      recalculateDirsSize();
 
-      createMangaIndex(files);
+      resetIndex();
+
+      createIndex(dirs, files);
 
       return callback();
     });
@@ -1723,31 +2013,69 @@ var loadIndex = function(callback) {
 }
 
 var reloadIndex = function(callback) {
-  all_dirs = [];
+  if (index_reloading) {
+    if (io) io.emit('reload-in-progress');
+    return callback(new Error('Index reload in progress.'));
+  }
 
-  dirs_map = {};
-  files_map = {};
+  index_reloading = true;
+  if (io) io.emit('reloading');
 
-  file_types_map = {};
-  popular_file_types = [];
+  loadIndex(function(err) {
+    index_reloading = false;
+    if (err) {
+      console.log('Reload index failed:', err.message);
+      if (io) io.emit('reload-error', {error: err.message});
+      return callback(err);
+    } else {
+      if (io) io.emit('reload-success');
+      callback();
+    }
+  });
+}
 
-  image_files = [];
-  video_files = [];
-  all_files = [];
+///
 
-  manga_list = [];
-  manga_map = {};
-  manga_chapters_map = {};
+var updateManga = function(manga, opts, done) {
+  if (typeof opts == 'function') {
+    done = opts;
+    opts = {};
+  }
+  if (!manga.relpath) return done(new Error('Missing manga relpath'));
 
-  manga_searcher = false;
-  manga_search_list = [];
+  var manga_dir = getAbsPath(manga.relpath);
 
-  manga_indices = {};
-  manga_starts_with_map = {};
+  if (!utils.directoryExists(manga_dir)) {
+    return done(new Error('Manga dir not found!'));
+  }
 
-  manga_starts_with_list = [];
+  console.log('Update manga dir:', manga_dir);
 
-  loadIndex(callback);
+  mangaUpdater.updateMangaDir(manga_dir, {
+    cbz: true,
+    remove_dir: true,
+    ignore_last_update: opts.ignore_last_update
+  }, function(err) {
+    if (err) {
+      return done(err);
+    } else {
+      if (utils.fileExists(path.join(manga_dir, 'saver.json'))) {
+        var manga_info = loadMangaInfo(manga_dir, 'saver.json');
+
+        if (manga_info.chapters_count > 0) {
+          if (manga_info.chapters.length) {
+            sortItems(manga_info.chapters, 'title_lc', 'desc');
+          }
+
+          manga_map[manga_info.relpath] = manga_info;
+        }
+
+        done();
+      } else {
+        done();
+      }
+    }
+  });
 }
 
 ///

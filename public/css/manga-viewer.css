@@ -1,0 +1,721 @@
+/*!
+ * mangaviewer.jul11.co
+ * Jul11Co (2015-2018) 
+ */
+
+body {
+  background-color: #293033;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+.theme-light {
+  background-color: #F2F1F0;
+}
+.theme-dark {
+  background-color: #293033;
+}
+.navbar {
+  background-color: #9F2274;
+  min-height: 40px;
+}
+.mr-icon-title {
+
+}
+@media only screen and (min-width : 768px) {
+  .mr-icon-title {
+    float: left;
+  }
+}
+#mr-main-container {
+  padding-top: 10px;
+  margin-top: 5px;
+  margin-bottom: 0;
+  max-width: 100%;
+  width: 100%;
+}
+#mr-input-link {
+  font-family: "Comic Sans MS","Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+.mr-result-error {
+  background-color: white;
+  padding: 0;
+  box-shadow: 0 1px 2px rgba(43,59,93,0.29);
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+.mr-result-error blockquote {
+  margin: 0;
+  background-color: #F31A1A;
+  color: white;
+}
+
+.mr-page-content {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+@media (max-width : 768px) {
+  .mr-page-content {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+#mr-settings-view {
+  position: fixed;
+  top: 50px;
+  right: 15px;
+  font-size: 16px;
+  background-color: rgba(12, 12, 12, 0.76);
+  border-radius: 4px;
+  padding: 3px 10px;
+  color: white;
+  z-index: 305;
+}
+
+#mr-single-page-view {
+  position: absolute;
+  top: 48px;
+  left: 0;
+  margin: 0 auto;
+  height: -webkit-calc(100% - 48px);
+  height: -moz-calc(100% - 48px);
+  height: calc(100% - 48px);
+  width: 100%;
+  z-index: 302;
+  /*background-color: black;*/
+  color: white;
+}
+
+#mr-single-page-view.hide-topbar {
+  top: 0;
+  height: 100%;
+}
+
+body.full-screen #mr-single-page-view {
+  top: 0;
+  height: 100%;
+}
+
+#mr-single-page-view span#single-page-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 304;
+}
+
+#mr-single-page-view span#single-page-progress {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 16px;
+  background-color: rgba(49, 49, 49, 0.68);
+  border-radius: 4px;
+  padding: 3px 10px;
+  color: white;
+  z-index: 304;
+}
+
+#mr-single-page-view div#single-page-view-content {
+  position: relative;
+  text-align: center;
+  display: block;
+  margin: 0 auto;
+  height: 100%;
+  overflow-y: auto;
+}
+
+#mr-single-page-view span.single-page-filler {
+  display: inline-block;
+  height: 100%;
+  vertical-align: middle;
+}
+
+#mr-single-page-view .single-page-image {
+  display: inline;
+  vertical-align: middle;
+}
+#mr-single-page-view .single-page-image.fit {
+  max-height: 100%;
+  max-width: 100%;
+}
+#mr-single-page-view .single-page-image.fill-width {
+  max-width: 100%;
+}
+
+#mr-single-page-view #prev-chapter-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100px;
+  height: 100%;
+  z-index: 303;
+  cursor: pointer;
+}
+#mr-single-page-view #next-chapter-page {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100%;
+  z-index: 303;
+  cursor: pointer;
+}
+@media (max-width: 768px) {
+  #mr-single-page-view #next-chapter-page,
+  #mr-single-page-view #prev-chapter-page {
+    width: 40px;
+  }
+}
+
+#manga-top-nav {
+  /*position: fixed;*/
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 200;
+  /*background-color: rgba(128, 128, 128, 0.4);*/
+  background-color: black;
+  padding: 5px 5px 10px 5px;
+  /*background: -webkit-linear-gradient(top, transparent, rgba(0,0,0,.4)); /* For Safari 5.1 to 6.0 */*/
+  /*background: -o-linear-gradient(top, transparent, rgba(0,0,0,.4)); /* For Opera 11.1 to 12.0 */*/
+  /*background: -moz-linear-gradient(top, transparent, rgba(0,0,0,.4)); /* For Firefox 3.6 to 15 */*/
+  /*background: linear-gradient(to top, transparent, rgba(0,0,0,.4)); /* Standard syntax (must be last) */*/
+}
+
+.slider {
+  width: 150px;
+}
+
+#chapter-list {
+  /*margin-left: 5px;*/
+  /*margin-top: 0;*/
+  /*display: inline-block;*/
+  display: block;
+  margin: 0 auto;
+  text-align: center;
+  font-family: "Comic Sans MS","Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+
+#chapter-list>select {
+  padding: 3px 10px 3px 5px;
+  background-color: white;
+  border-radius: 3px;
+}
+
+#chapter-go {
+  display: none;
+}
+
+#manga-title,
+.chapter-title,
+#chapter-title {
+  margin-top: 0;
+  text-align: center;
+  color: white;
+  font-family: "Comic Sans MS","Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+
+.theme-light #manga-title,
+.theme-light .chapte-tilte,
+.theme-light #chapter-title {
+  color: #333333;
+}
+
+.theme-dark #manga-title,
+.theme-dark .chapte-tilte,
+.theme-dark #chapter-title {
+  color: #ffffff;
+}
+
+#manga-title a,
+#manga-title a:focus,
+#manga-title a:hover {
+  color: orange;
+}
+
+@media only screen and (max-width : 600px) {
+  #manga-title {
+    display: none;
+  }
+}
+
+#scroll-page-images>img {
+  margin: 5px 5px 0 5px;
+}
+#chapter-loading {
+  margin-top: 20px;
+}
+
+#scroll-page-images {
+  text-align: center;
+}
+
+.theme-light #scroll-page-images img,
+.theme-light #single-page-image {
+  box-shadow: 0 2px 5px rgba(0,0,0,0.25), 0 2px 10px rgba(0,0,0,0.25);
+}
+
+.theme-light #mr-single-page-view {
+  background-color: #f2f1f0;
+  color: #293033;
+}
+
+@media (max-width : 768px) {
+  #scroll-page-images img {
+    width: 100%;
+  }
+}
+
+#chapter-load-progress {
+  font-size: 20px;
+  padding: 0 5px;
+  background-color: rgba(0,0,0,0.4);
+  color: #ffffff;
+  /*float: right;*/
+  /*margin-right: 10px;*/
+  font-family: "Comic Sans MS","Helvetica Neue",Helvetica,Arial,sans-serif;
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  z-index: 301;
+}
+
+#toggle-viewer-theme {
+  /*float: right;*/
+  font-size: 16px;
+  padding: 0 5px;
+  margin: 0 5px;
+  font-family: "Comic Sans MS","Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+
+.theme-dark #toggle-viewer-theme {
+  background-color: rgba(0,0,0,0.8);
+  color: #f2f1f0;
+}
+.theme-dark #toggle-viewer-theme a,
+.theme-dark #toggle-viewer-theme a:hover {
+  color: #f2f1f0;
+}
+.theme-light #toggle-viewer-theme {
+  background-color: #f2f1f0;
+  color: #293033;
+  box-shadow: 0 1px 2px rgba(43, 59, 93, 0.29);
+}
+.theme-light #toggle-viewer-theme a,
+.theme-light #toggle-viewer-theme a:hover {
+  color: #293033;
+}
+
+#chapter-download {
+  float: right;
+  color: #fff;
+  padding: 0 5px;
+  font-size: 16px;
+}
+.theme-dark #chapter-download {
+  background-color: rgba(0,0,0,0.8);
+  color: #ffffff;
+}
+.theme-dark #chapter-download a,
+.theme-dark #chapter-download a:hover {
+  color: #ffffff;
+}
+.theme-light #chapter-download {
+  background-color: #f2f1f0;
+  color: #333333;
+}
+.theme-light #chapter-download a,
+.theme-light #chapter-download a:hover {
+  color: #333333;
+}
+
+#chapter-download a,
+#chapter-download a:hover,
+#chapter-download a:forcus {
+  color: #ccc;
+}
+
+#chapter-loading {
+  color: #ffffff;
+  text-align: center;
+  font-size: 20px;
+}
+
+#chapter-next,
+#chapter-previous {
+  color: #fff;
+  text-shadow: 1px 1px rgba(0,0,0,.3);
+}
+
+#chapter-next.disable,
+#chapter-previous.disable {
+  color: #777;
+}
+
+#chapter-next:hover,
+#chapter-next:focus,
+#chapter-previous:hover,
+#chapter-previous:focus {
+  color: #ccc;
+}
+
+#chapter-next.disable:hover,
+#chapter-next.disable:focus,
+#chapter-previous.disable:hover,
+#chapter-previous.disable:focus {
+  color: #777;
+}
+
+#right-tools {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  /*margin-right: 5px;*/
+  /*margin-top: 5px;*/
+  /*float: right;*/
+  z-index: 305;
+  font-family: "Comic Sans MS","Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+
+#chapter-image-width-settings {
+  /*background-color: rgba(0, 0, 0, .4);*/
+  padding: 10px 0;
+  margin-bottom: 5px;
+  /*position: fixed;*/
+  /*top: 40px;*/
+  /*right: 10px;*/
+  z-index: 305;
+}
+
+#toggle-view-mode,
+#toggle-fullscreen,
+#toggle-settings {
+  border: none;
+  box-shadow: none;
+  font-size: 16px;
+  padding: 5px;
+  margin: 15px 5px;
+  background-color: rgba(0,0,0,0.4);
+  color: #ffffff;
+}
+
+.theme-dark #toggle-view-mode,
+.theme-dark #toggle-fullscreen,
+.theme-dark #toggle-settings {
+  background-color: rgba(0,0,0,0.8);
+  color: #ffffff;
+}
+.theme-dark #toggle-view-mode a,
+.theme-dark #toggle-view-mode a:hover,
+.theme-dark #toggle-fullscreen a,
+.theme-dark #toggle-fullscreen a:hover,
+.theme-dark #toggle-settings a,
+.theme-dark #toggle-settings a:hover {
+  color: #ffffff;
+}
+/*.theme-light #toggle-view-mode,
+.theme-light #toggle-fullscreen,
+.theme-light #toggle-settings {
+  background-color: #f2f1f0;
+  color: #333333;
+  box-shadow: 0 1px 2px rgba(43, 59, 93, 0.29);
+}*/
+.theme-light #toggle-view-mode a,
+.theme-light #toggle-view-mode a:hover,
+.theme-light #toggle-fullscreen a,
+.theme-light #toggle-fullscreen a:hover,
+.theme-light #toggle-settings a,
+.theme-light #toggle-settings a:hover {
+  /*color: #333333;*/
+  color: #ffffff;
+}
+
+@media (max-width : 768px) {
+  /*#chapter-image-width-settings {
+    display: none;
+  }*/
+  #toggle-fullscreen {
+    display: none;
+  }
+}
+
+/*.theme-light #chapter-image-width-settings {
+  background-color: #f2f1f0;
+  color: #333333;
+  box-shadow: 0 1px 2px rgba(43, 59, 93, 0.29);
+}*/
+
+.sk-cube-grid {
+  width: 40px;
+  height: 40px;
+  margin: 100px auto;
+}
+
+.sk-cube-grid .sk-cube {
+  width: 33%;
+  height: 33%;
+  background-color: #fff;
+  float: left;
+  -webkit-animation: sk-cubeGridScaleDelay 1.3s infinite ease-in-out;
+          animation: sk-cubeGridScaleDelay 1.3s infinite ease-in-out; 
+}
+.sk-cube-grid .sk-cube1 {
+  -webkit-animation-delay: 0.2s;
+          animation-delay: 0.2s; }
+.sk-cube-grid .sk-cube2 {
+  -webkit-animation-delay: 0.3s;
+          animation-delay: 0.3s; }
+.sk-cube-grid .sk-cube3 {
+  -webkit-animation-delay: 0.4s;
+          animation-delay: 0.4s; }
+.sk-cube-grid .sk-cube4 {
+  -webkit-animation-delay: 0.1s;
+          animation-delay: 0.1s; }
+.sk-cube-grid .sk-cube5 {
+  -webkit-animation-delay: 0.2s;
+          animation-delay: 0.2s; }
+.sk-cube-grid .sk-cube6 {
+  -webkit-animation-delay: 0.3s;
+          animation-delay: 0.3s; }
+.sk-cube-grid .sk-cube7 {
+  -webkit-animation-delay: 0s;
+          animation-delay: 0s; }
+.sk-cube-grid .sk-cube8 {
+  -webkit-animation-delay: 0.1s;
+          animation-delay: 0.1s; }
+.sk-cube-grid .sk-cube9 {
+  -webkit-animation-delay: 0.2s;
+          animation-delay: 0.2s; }
+
+@-webkit-keyframes sk-cubeGridScaleDelay {
+  0%, 70%, 100% {
+    -webkit-transform: scale3D(1, 1, 1);
+            transform: scale3D(1, 1, 1);
+  } 35% {
+    -webkit-transform: scale3D(0, 0, 1);
+            transform: scale3D(0, 0, 1); 
+  }
+}
+
+@keyframes sk-cubeGridScaleDelay {
+  0%, 70%, 100% {
+    -webkit-transform: scale3D(1, 1, 1);
+            transform: scale3D(1, 1, 1);
+  } 35% {
+    -webkit-transform: scale3D(0, 0, 1);
+            transform: scale3D(0, 0, 1);
+  } 
+}
+
+body {
+  font-family: "Comic Sans MS","Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+
+#manga-top-nav {
+  padding: 5px;
+}
+
+#manga-top-header {
+  display: inline-block;
+}
+#manga-top-header a {
+  font-size: 24px;
+  color: #fff;
+}
+#manga-top-header a:hover {
+  text-decoration: none;
+}
+.btn-sm {
+  padding: 3px 7px;
+}
+
+#mr-input-link {
+  background-color: white;
+  padding: 3px 15px;
+  height: 34px;
+}
+
+.theme-light #mr-input-link {
+  box-shadow: 0 1px 2px rgba(43,59,93,0.29);
+}
+
+#chapter-list select {
+  font-size: 14px;
+}
+
+#scroll-page-images img {
+  width: 100%;
+}
+@media (min-width: 768px) {
+  #scroll-page-images img {
+    width: 80%;
+  }
+} 
+
+.theme-light #scroll-page-images img,
+.theme-light #single-page-view-content img {
+  box-shadow: 0 2px 5px rgba(0,0,0,0.25), 0 2px 10px rgba(0,0,0,0.25);
+}
+
+.theme-dark #scroll-page-images,
+.theme-dark #single-page-view-content {
+  background-color: #293033;
+}
+
+#back-to-top {
+  z-index: 200;
+  position: fixed;
+  bottom: -60px;
+  right: 10px;
+}
+.btn-dark {
+  border-radius: 0;
+  color: #fff;
+  background-color: rgba(0,0,0,0.4);
+}
+.btn-dark:hover,
+.btn-dark:focus,
+.btn-dark:active {
+  color: #fff;
+  background-color: rgba(0,0,0,0.7);
+}
+#zoom-control {
+  position: fixed;
+  bottom: 40px;
+  width: 100%;
+  background: transparent;
+  text-align: center;
+  z-index: 3000;
+}
+#zoom-control-inner {
+  margin: 0 auto;
+  display: inline-block;
+  padding: 10px 20px;
+  border: none;
+  box-shadow: 0 1px 2px rgba(43, 59, 93, 0.29);
+  background-color: rgba(0,0,0,0.6);
+  color: #ffffff;
+}
+#zoom-control a {
+  color: rgb(170, 170, 170);
+  font-size: 25px;
+  padding: 10px;
+}
+#zoom-control a:hover,
+#zoom-control a:active {
+  color: #ffffff;
+}
+
+.single-page-button {
+  color: rgb(157, 157, 157);
+}
+.single-page-button:hover,
+.single-page-button:active,
+.single-page-button:focus {
+  color: white;
+}
+.theme-light .single-page-button:hover,
+.theme-light .single-page-button:active,
+.theme-light .single-page-button:focus {
+  color: #333;
+}
+#chapter-link-edit {
+  /*color: #fff;*/
+  text-decoration: none;
+}
+#chapter-page-nav-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100px;
+  height: 90%;
+  text-align: left;
+  z-index: 3000;
+  cursor: pointer;
+}
+#chapter-page-nav-right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 90%;
+  text-align: right;
+  z-index: 3000;
+  cursor: pointer;
+}
+@media (max-width: 768px) {
+  #chapter-page-nav-left,
+  #chapter-page-nav-right {
+    width: 40px;
+  }
+}
+
+#viewModeSettingsDropdown {
+  display: inline-block;
+  margin-right: 10px;
+}
+
+.manga-top-nav-header {
+  margin-right: 80px;
+}
+@media (max-width: 768px) {
+  .manga-top-nav-header {
+    margin-right: 40px;
+  }
+}
+
+.manga-top-nav-icon {
+  /*display: inline-block;*/
+  /*margin-top: -5px;*/
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+#manga-top-form {
+  display: inline-block;
+  margin-left: 70px;
+}
+
+#manga-chapter-nav {
+  margin-top: 0;
+  display: inline-block;
+  margin-left: 70px;
+}
+
+#manga-title a {
+  width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#chapter-list select {
+  max-width: 350px;
+}
+@media (max-width: 768px) {
+  #manga-title {
+    width: 100px;
+  }
+  #chapter-list select {
+    max-width: 200px;
+  }
+}
+@media (max-width: 480px) {
+  #chapter-list select {
+    max-width: 150px;
+  }
+}
+#mr-single-page-view span#single-page-progress { 
+  font-size: 14px;
+}
+.double-page-1 {
+  float: left;
+  width: 50%;
+  height: 100%;
+}
+.double-page-2 {
+  float: right;
+  width: 50%;
+  height: 100%;
+}
