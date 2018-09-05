@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="/css/bootstrap.min.css">
-    <!-- <link rel="stylesheet" href="/css/bootstrap-theme.min.css"> -->
+    <link rel="stylesheet" href="/css/bootstrap-theme.min.css">
     <link rel="stylesheet" href="/css/font-awesome.min.css">
     <link rel="stylesheet" href="/css/animate.css">
     <link rel="stylesheet" href="/css/file-browser.css">
@@ -31,8 +31,8 @@
         <div id="navbar-main" class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li><a href="/" title="Browse all manga">Manga <span class="badge"><%=manga_count%></span></a></li>
-            <li class="active"><a href="#files-content">Files <span class="badge"><%=files_count%></span></a></li>
-            <li><a href="/reload_index" title="Reload index"><i class="fa fa-refresh"></i></a></li>
+            <li class="active"><a href="/files?dir=ROOT">Files <span class="badge"><%=files_count%></span></a></li>
+            <!-- <li><a href="/reload_index" title="Reload index"><i class="fa fa-refresh fa-fw"></i> Reload Index</a></li> -->
           </ul>
         </div>
       </div>
@@ -40,8 +40,8 @@
 
     <%
     var base_comp = 'dir=' + encodeURIComponent(dir_path);
-    if (query.files) {
-      base_comp = 'files=1';
+    if (query.all) {
+      base_comp = 'all=1';
     } else if (query.images){
       base_comp = 'images=1';
     } else if (query.videos) {
@@ -50,7 +50,7 @@
       base_comp = 'file_type=' + query.file_type;
     } 
     if (query.from_dir) {
-      base_comp += '&from_dir=' + query.from_dir;
+      base_comp += '&from_dir=' + encodeURIComponent(query.from_dir);
     }
     %>
     
@@ -59,15 +59,15 @@
       <div class="row">
         <div id="browser-header" class="col-md-12">
         <p>
-          <a href="/?files=1"><b>Files</b> (<%=files_count%>)</a>, 
-          <a href="/?images=1"><b>Images</b> (<%=images_count%>)</a> 
-          <!-- <a href="/?videos=1"><b>Videos</b> (<%=videos_count%>)</a> -->
+          <a href="/files?all=1"><b>Files</b> (<%=files_count%>)</a>, 
+          <a href="/files?images=1"><b>Images</b> (<%=images_count%>)</a> 
+          <!-- <a href="/files?videos=1"><b>Videos</b> (<%=videos_count%>)</a> -->
         </p>
 
         <p>
           File Types: 
           <%for(var i=0; i < popular_file_types.length; i++){%>
-          <a href="/?file_type=<%=popular_file_types[i].type%>"><span style="text-transform: lowercase;"><%=popular_file_types[i].type%></span> (<%=popular_file_types[i].count%>)</a><%if (i < popular_file_types.length-1){%>,<%}%>
+          <a href="/files?file_type=<%=popular_file_types[i].type%>"><span style="text-transform: lowercase;"><%=popular_file_types[i].type%></span> (<%=popular_file_types[i].count%>)</a><%if (i < popular_file_types.length-1){%>,<%}%>
           <%}%>
         </p>
 
@@ -77,11 +77,11 @@
         <div id="browser-nav" class="col-md-12">
         <%if (query.files && !query.from_dir) {%>
           <%if (query.from_dir) {%>
-        <h4>Files in <a href="/?dir=<%=encodeURIComponent(query.from_dir)%>"><%=query.from_dir%></a></h4>
+        <h4>Files in <a href="/files?dir=<%=encodeURIComponent(query.from_dir)%>"><%=query.from_dir%></a></h4>
           <%}else{%>
         <nav aria-label="breadcrumb" role="navigation">
           <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/?dir=."><i class="fa fa-sitemap fa-fw"></i></a></li>
+            <li class="breadcrumb-item"><a href="/files?dir=."><i class="fa fa-sitemap fa-fw"></i></a></li>
             <li class="breadcrumb-item">All Files</li>
           </ol>
         </nav>
@@ -89,11 +89,11 @@
           <%}%>
         <%}else if (query.images && !query.from_dir) {%>
           <%if (query.from_dir) {%>
-        <h4>Images in <a href="/?dir=<%=encodeURIComponent(query.from_dir)%>"><%=query.from_dir%></a></h4>
+        <h4>Images in <a href="/files?dir=<%=encodeURIComponent(query.from_dir)%>"><%=query.from_dir%></a></h4>
           <%}else{%>
         <nav aria-label="breadcrumb" role="navigation">
           <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/?dir=."><i class="fa fa-sitemap fa-fw"></i></a></li>
+            <li class="breadcrumb-item"><a href="/files?dir=."><i class="fa fa-sitemap fa-fw"></i></a></li>
             <li class="breadcrumb-item">All Images</li>
           </ol>
         </nav>
@@ -102,7 +102,7 @@
         <%}else if (query.videos && !query.from_dir) {%>
         <nav aria-label="breadcrumb" role="navigation">
           <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/?dir=."><i class="fa fa-sitemap fa-fw"></i></a></li>
+            <li class="breadcrumb-item"><a href="/files?dir=."><i class="fa fa-sitemap fa-fw"></i></a></li>
             <li class="breadcrumb-item">All Videos</li>
           </ol>
         </nav>
@@ -110,26 +110,26 @@
         <%}else if (query.file_type && !query.from_dir) {%>
         <nav aria-label="breadcrumb" role="navigation">
           <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/?dir=."><i class="fa fa-sitemap fa-fw"></i></a></li>
+            <li class="breadcrumb-item"><a href="/files?dir=."><i class="fa fa-sitemap fa-fw"></i></a></li>
             <li class="breadcrumb-item">File Type: <%=query.file_type%></li>
           </ol>
         </nav>
           <%if (query.from_dir) {%>
-        <h4>File Type: <%=query.file_type%> in <a href="/?dir=<%=encodeURIComponent(query.from_dir)%>"><%=query.from_dir%></a></h4>
+        <h4>File Type: <%=query.file_type%> in <a href="/files?dir=<%=encodeURIComponent(query.from_dir)%>"><%=query.from_dir%></a></h4>
           <%}else{%>
         <h4>File Type: <%=query.file_type%></h4>
           <%}%>
         <%} else {%>
         <nav aria-label="breadcrumb" role="navigation">
           <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/?dir=."><i class="fa fa-sitemap fa-fw"></i></a></li>
+            <li class="breadcrumb-item"><a href="/files?dir=."><i class="fa fa-sitemap fa-fw"></i></a></li>
           <%parents.forEach(function(parent){%>
-            <li class="breadcrumb-item"><a href="/?dir=<%=encodeURIComponent(parent.path)%>"><%=parent.name%></a></li>
+            <li class="breadcrumb-item"><a href="/files?dir=<%=encodeURIComponent(parent.path)%>"><%=parent.name%></a></li>
           <%});%>
             <%if (!query.from_dir) {%>
             <li class="breadcrumb-item"><%=dir_name%></li>
             <%} else {%>
-            <li class="breadcrumb-item"><a href="/?dir=<%=encodeURIComponent(query.from_dir)%>"><%=dir_name%></a></li>
+            <li class="breadcrumb-item"><a href="/files?dir=<%=encodeURIComponent(query.from_dir)%>"><%=dir_name%></a></li>
               <%if (query.files) {%>
             <li class="breadcrumb-item">Files</li>
               <%}else if (query.images) {%>
@@ -149,14 +149,14 @@
         <%if (dir_file_types.length) {%>
         <p>
           <%for(var i=0; i < dir_file_types.length; i++){%>
-          <a href="/?file_type=<%=dir_file_types[i].type%>&from_dir=<%=encodeURIComponent(query.from_dir||query.dir)%>"><span style="text-transform: lowercase;"><%=dir_file_types[i].type%></span> (<%=dir_file_types[i].count%>)</a><%if (i < dir_file_types.length-1){%>,<%}%>
+          <a href="/files?file_type=<%=dir_file_types[i].type%>&from_dir=<%=encodeURIComponent(query.from_dir||query.dir)%>"><span style="text-transform: lowercase;"><%=dir_file_types[i].type%></span> (<%=dir_file_types[i].count%>)</a><%if (i < dir_file_types.length-1){%>,<%}%>
           <%}%>
         </p>
         <%}%>
 
         <%if (manga) {%>
         <div class="alert alert-info">
-          <i class="fa fa-info-circle fa-fw"></i> <strong>Manga:</strong> <a href="/?manga=<%=manga.relpath%>"><%=manga.name%></a>
+          <i class="fa fa-info-circle fa-fw"></i> <strong>Manga:</strong> <a href="/manga?path=<%=manga.relpath%>"><%=manga.name%></a>
         </div>
         <%}%>
 
@@ -171,53 +171,53 @@
             <ul class="dropdown-menu dropdown-menu-right">
               <%if (!query.sort||query.sort=='name'){%>
                 <%if(query.order=='desc'){%>
-              <li class="active"><a href="/?<%=base_comp%>&sort=name">Name</a></li>
+              <li class="active"><a href="/files?<%=base_comp%>&sort=name">Name</a></li>
                 <%}else{%>
-              <li class="active"><a href="/?<%=base_comp%>&sort=name&order=desc">Name</a></li>
+              <li class="active"><a href="/files?<%=base_comp%>&sort=name&order=desc">Name</a></li>
                 <%}%>
               <%}else{%>
-              <li><a href="/?<%=base_comp%>&sort=name&order=desc">Name</a></li>
+              <li><a href="/files?<%=base_comp%>&sort=name&order=desc">Name</a></li>
               <%}%>
               <%if (query.sort=='size'){%>
                 <%if(query.order=='asc'){%>
-              <li class="active"><a href="/?<%=base_comp%>&sort=size">Size</a></li>
+              <li class="active"><a href="/files?<%=base_comp%>&sort=size">Size</a></li>
                 <%}else{%>
-              <li class="active"><a href="/?<%=base_comp%>&sort=size&order=asc">Size</a></li>
+              <li class="active"><a href="/files?<%=base_comp%>&sort=size&order=asc">Size</a></li>
                 <%}%>
               <%}else{%>
-              <li><a href="/?<%=base_comp%>&sort=size">Size</a></li>
+              <li><a href="/files?<%=base_comp%>&sort=size">Size</a></li>
               <%}%>
               <%if (query.sort=='type'){%>
                 <%if(query.order=='desc'){%>
-              <li class="active"><a href="/?<%=base_comp%>&sort=type">Type</a></li>
+              <li class="active"><a href="/files?<%=base_comp%>&sort=type">Type</a></li>
                 <%}else{%>
-              <li class="active"><a href="/?<%=base_comp%>&sort=type&order=desc">Type</a></li>
+              <li class="active"><a href="/files?<%=base_comp%>&sort=type&order=desc">Type</a></li>
                 <%}%>
               <%}else{%>
-              <li><a href="/?<%=base_comp%>&sort=type&order=desc">Type</a></li>
+              <li><a href="/files?<%=base_comp%>&sort=type&order=desc">Type</a></li>
               <%}%>
               <%if (query.sort=='mtime'){%>
                 <%if(query.order=='asc'){%>
-              <li class="active"><a href="/?<%=base_comp%>&sort=mtime">Date Modified</a></li>
+              <li class="active"><a href="/files?<%=base_comp%>&sort=mtime">Date Modified</a></li>
                 <%}else{%>
-              <li class="active"><a href="/?<%=base_comp%>&sort=mtime&order=asc">Date Modified</a></li>
+              <li class="active"><a href="/files?<%=base_comp%>&sort=mtime&order=asc">Date Modified</a></li>
                 <%}%>
               <%}else{%>
-              <li><a href="/?<%=base_comp%>&sort=mtime">Date Modified</a></li>
+              <li><a href="/files?<%=base_comp%>&sort=mtime">Date Modified</a></li>
               <%}%>
             </ul>
           </div>
 
           <h5>
             <%if (items_length>1){%><span><%=items_length%> items</span><%}else if (items_length==1){%><span><%=items_length%> item</span><%}%>
-            <%if (total_size>0){%> - <%=bytes(total_size)%><%}%> <span><%if (query.dir) {%> - <a href="/?files=1&from_dir=<%=encodeURIComponent(query.dir)%>">Show files</a><%}%></span>
+            <%if (total_size>0){%> - <%=bytes(total_size)%><%}%> <span><%if (query.dir) {%> - <a href="/files?all=1&from_dir=<%=encodeURIComponent(query.dir)%>">Show files</a><%}%></span>
           </h5>
 
           <%var query_skip = (query.skip ? parseInt(query.skip) : 0);%>
           <%var next_skip = query_skip+query.limit;%>
 
           <%if (items_length>next_skip){%>
-          <p><%=(query_skip+1)%>-<%=(next_skip)%>, <a href="/?<%=base_comp%>&skip=<%=next_skip%>">and more <%=(items_length-next_skip)%> items...</a></p>
+          <p><%=(query_skip+1)%>-<%=(next_skip)%>, <a href="/files?<%=base_comp%>&skip=<%=next_skip%>">and more <%=(items_length-next_skip)%> items...</a></p>
           <%}else if (query_skip>0){%>
           <p><%=(query_skip+1)%>-<%=items_length%></p>
           <%}%>
@@ -231,54 +231,54 @@
               <th class="hidden-sm hidden-xs" style="max-width: 500px;">
                 <%if (!query.sort||query.sort=='name'){%>
                   <%if(query.order=='desc'){%>
-                <a href="/?<%=base_comp%>&sort=name">Name</a>
+                <a href="/files?<%=base_comp%>&sort=name">Name</a>
                 <i class="fa fa-angle-down fa-fw" style="color: grey;"></i>
                   <%}else{%>
-                <a href="/?<%=base_comp%>&sort=name&order=desc">Name</a>
+                <a href="/files?<%=base_comp%>&sort=name&order=desc">Name</a>
                 <i class="fa fa-angle-up fa-fw" style="color: grey;"></i>
                   <%}%>
                 <%}else{%>
-                <a href="/?<%=base_comp%>&sort=name&order=desc">Name</a>
+                <a href="/files?<%=base_comp%>&sort=name&order=desc">Name</a>
                 <%}%>
               </th>
               <th class="hidden-sm hidden-xs"></th>
               <th class="hidden-sm hidden-xs">
                 <%if (query.sort=='size'){%>
                   <%if(query.order=='asc'){%>
-                <a href="/?<%=base_comp%>&sort=size">Size</a>
+                <a href="/files?<%=base_comp%>&sort=size">Size</a>
                 <i class="fa fa-angle-up fa-fw" style="color: grey;"></i>
                   <%}else{%>
-                <a href="/?<%=base_comp%>&sort=size&order=asc">Size</a>
+                <a href="/files?<%=base_comp%>&sort=size&order=asc">Size</a>
                 <i class="fa fa-angle-down fa-fw" style="color: grey;"></i>
                   <%}%>
                 <%}else{%>
-                <a href="/?<%=base_comp%>&sort=size">Size</a>
+                <a href="/files?<%=base_comp%>&sort=size">Size</a>
                 <%}%>
               </th>
               <th class="hidden-sm hidden-xs">
                 <%if (query.sort=='type'){%>
                   <%if(query.order=='desc'){%>
-                <a href="/?<%=base_comp%>&sort=type">Type</a>
+                <a href="/files?<%=base_comp%>&sort=type">Type</a>
                 <i class="fa fa-angle-down fa-fw" style="color: grey;"></i>
                   <%}else{%>
-                <a href="/?<%=base_comp%>&sort=type&order=desc">Type</a>
+                <a href="/files?<%=base_comp%>&sort=type&order=desc">Type</a>
                 <i class="fa fa-angle-up fa-fw" style="color: grey;"></i>
                   <%}%>
                 <%}else{%>
-                <a href="/?<%=base_comp%>&sort=type&order=desc">Type</a>
+                <a href="/files?<%=base_comp%>&sort=type&order=desc">Type</a>
                 <%}%>
               </th>
               <th class="hidden-sm hidden-xs">
                 <%if (query.sort=='mtime'){%>
                   <%if(query.order=='asc'){%>
-                <a href="/?<%=base_comp%>&sort=mtime">Date Modified</a>
+                <a href="/files?<%=base_comp%>&sort=mtime">Date Modified</a>
                 <i class="fa fa-angle-up fa-fw" style="color: grey;"></i>
                   <%}else{%>
-                <a href="/?<%=base_comp%>&sort=mtime&order=asc">Date Modified</a>
+                <a href="/files?<%=base_comp%>&sort=mtime&order=asc">Date Modified</a>
                 <i class="fa fa-angle-down fa-fw" style="color: grey;"></i>
                   <%}%>
                 <%}else{%>
-                <a href="/?<%=base_comp%>&sort=mtime">Date Modified</a>
+                <a href="/files?<%=base_comp%>&sort=mtime">Date Modified</a>
                 <%}%>
               </th>
             </tr>
@@ -287,7 +287,7 @@
 
           <%dirs.forEach(function(dir){%>
             <tr class="item-folder" data-path="<%=encodeURIComponent(dir.path)%>">
-              <td style="width: 60px;"><a style="color: black;" href="/?dir=<%=encodeURIComponent(dir.path)%>" title="<%=dir.name%>"><img src="/img/folder-icon.png" width="60px" /></a></td>
+              <td style="width: 60px;"><a style="color: black;" href="/files?dir=<%=encodeURIComponent(dir.path)%>" title="<%=dir.name%>"><img src="/img/folder-icon.png" width="60px" /></a></td>
               <td style="max-width: 500px;">
                 <%=dir.name%> 
                 <p class="item-file-extra">
@@ -310,7 +310,7 @@
                     <li><a class="delete-folder" href="#" data-path="<%=encodeURIComponent(dir.path)%>" title="Delete this folder"><span class="text-danger"><i class="fa fa-trash fa-fw"></i> Delete folder</span></a></li>
                   </ul>
                 </div>
-                <!-- <a class="open-external-link" href="/?images=1&from_dir=<%=encodeURIComponent(dir.path)%>" title="Show images from this folder"><i class="fa fa-picture-o fa-fw"></i></a>  --><!-- <a class="delete-folder" href="#" data-path="<%=encodeURIComponent(dir.path)%>" title="Delete this folder"><i class="fa fa-trash fa-fw"></i></a> <a class="open-in-external-program" href="#" data-path="<%=encodeURIComponent(dir.path)%>" title="Open in external program"><i class="fa fa-external-link fa-fw"></i></a> --><%}%> 
+                <!-- <a class="open-external-link" href="/files?images=1&from_dir=<%=encodeURIComponent(dir.path)%>" title="Show images from this folder"><i class="fa fa-picture-o fa-fw"></i></a>  --><!-- <a class="delete-folder" href="#" data-path="<%=encodeURIComponent(dir.path)%>" title="Delete this folder"><i class="fa fa-trash fa-fw"></i></a> <a class="open-in-external-program" href="#" data-path="<%=encodeURIComponent(dir.path)%>" title="Open in external program"><i class="fa fa-external-link fa-fw"></i></a> --><%}%> 
               </td>
               <td class="hidden-sm hidden-xs" style="color: grey;">
                 <%if (dir.size>0){%><span><%=bytes(dir.size)%></span><%}%>
@@ -329,7 +329,7 @@
               title="<%=file.name%>">
               <td style="width: 60px;">
                 <a style="color: grey;" class="open-external-link" href="/files/<%=encodeURIComponent(file.name)%>?path=<%=encodeURIComponent(file.relpath)%>" target="_blank" title="Open file in new tab">
-                <%if (config.thumbnals && (file.is_image||file.is_comic)) {%>
+                <%if (config.thumbnails && (file.is_image||file.is_comic)) {%>
                   <img class="img-responsive lazyload" src="/img/file-icon.png" data-src="/thumb?path=<%=encodeURIComponent(file.relpath)%>" alt="" width="60px" style="max-height: 200px;">
                 <%}else{%>
                   <img src="/img/file-icon.png" width="60px" />
@@ -338,9 +338,9 @@
               </td>
               <td style="max-width: 500px;overflow: hidden;text-overflow: ellipsis;">
                 <a id="<%=file.name%>"></a>
-                <span><%=ellipsisMiddle(file.name,60)%></span>   
+                <span><%=utils.ellipsisMiddle(file.name,60)%></span>   
                 <%if (query.files||query.images||query.videos||query.file_type){%>
-                <p class="item-file-extra"><a class="open-external-link" href="/?dir=<%=encodeURIComponent(path.dirname(file.relpath))%>"><%=ellipsisMiddle(path.basename(path.dirname(file.relpath)),60)%><a></p>
+                <p class="item-file-extra"><a class="open-external-link" href="/files?dir=<%=encodeURIComponent(path.dirname(file.relpath))%>"><%=utils.ellipsisMiddle(path.basename(path.dirname(file.relpath)),60)%><a></p>
                 <%}%> 
                 <p class="item-file-extra hidden-lg hidden-md"><%if (file.mtime){%><span style="margin-right: 15px;"><%=moment(file.mtime).format('MMM DD, YYYY hh:mm A')%></span><%}%><span><%=bytes(file.size)%></span></p>
               </td>
@@ -349,7 +349,7 @@
                 <div class="dropdown item-menu-dropdown" style="float: right;">
                   <a href="#" class="dropdown-toggle" type="button" data-toggle="dropdown"><i class="fa fa-ellipsis-v fa-fw"></i></a>
                   <ul class="dropdown-menu dropdown-menu-right">
-                    <%if (query.files||query.images||query.videos||query.file_type){%><li><a href="/?dir=<%=encodeURIComponent(path.dirname(file.relpath))%>#<%=file.name%>" title="Show in folder"><i class="fa fa-folder fa-fw"></i> Show in folder</a></li>
+                    <%if (query.files||query.images||query.videos||query.file_type){%><li><a href="/files?dir=<%=encodeURIComponent(path.dirname(file.relpath))%>#<%=file.name%>" title="Show in folder"><i class="fa fa-folder fa-fw"></i> Show in folder</a></li>
                     <li class="divider"></li>
                     <%}%> 
                     <li><a class="open-in-external-program" href="#" data-path="<%=encodeURIComponent(file.relpath)%>" title="Open in external program"><span class="text-primary"><i class="fa fa-external-link fa-fw"></i> Open external</span></a></li>
@@ -370,7 +370,7 @@
         </div>
 
         <%if (items_length>next_skip){%>
-        <p><a href="/?<%=base_comp%>&skip=<%=next_skip%>">and more <%=(items_length-next_skip)%> items...</a></p>
+        <p><a href="/files?<%=base_comp%>&skip=<%=next_skip%>">and more <%=(items_length-next_skip)%> items...</a></p>
         <%}%>
 
       </div>

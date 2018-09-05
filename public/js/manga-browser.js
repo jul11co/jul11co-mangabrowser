@@ -1,12 +1,168 @@
 $(document).ready(function() {
 
+  var showNotification = function(title, message, timeout) {
+    if ($('#notification-pane').hasClass('hidden')) {
+      $('#notification-pane').removeClass('hidden');
+    }
+    $('#notification-title').text(title);
+    $('#notification-message').html(message);
+    if (timeout !== 0) {
+      setTimeout(function() {
+        $('#notification-pane').addClass('hidden');
+      }, timeout||3000);
+    }
+  }
+
+  ///
+
+  var startReloadIndex = function() {
+
+    console.log('Reload index...');
+
+    var socket = io();
+
+    socket.on('reloading', function(data){
+      showNotification('Manga Index', 'Reloading...', 0);
+    });
+
+    socket.on('reload-success', function(data){
+      showNotification('Manga Index', 'Reload success!');
+      setTimeout(function() {
+        window.location.href = '/';
+      }, 1000);
+    });
+    socket.on('reload-in-progress', function(data){
+      showNotification('Manga Index', 'Reload in progress!');
+    });
+    socket.on('reload-error', function(data){
+      if (data && data.error) {
+        showNotification('Manga Index', 'Reload Error: ' + data.error);
+      }
+    });
+
+    setTimeout(function() {
+      socket.emit('reload-index');
+    }, 200);
+  }
+
+  $('#index-reload').on('click', function(event) {
+    event.preventDefault();
+    startReloadIndex();
+  });
+
+  ///
+
+  $('.enable-manga-update').on('click', function(event) {
+    event.preventDefault();
+    var manga_path = $(this).attr('data-manga-path');
+    if (manga_path) {
+      $.post('/enable_manga_update?path=' + encodeURIComponent(manga_path), function(resp) {
+        // console.log(resp);
+        if (resp && resp.error) {
+          console.log(resp.error);
+          showNotification('Manga Update', 'Enable failed: ' + resp.error);
+        } else if (resp.success) {
+          showNotification('Manga Update Enabled', manga_path);
+        }
+        setTimeout(function() {
+          location.reload();
+        }, 2000);
+      });
+    }
+  });
+
+  $('.disable-manga-update').on('click', function(event) {
+    event.preventDefault();
+    var manga_path = $(this).attr('data-manga-path');
+    if (manga_path) {
+      $.post('/disable_manga_update?path=' + encodeURIComponent(manga_path), function(resp) {
+        // console.log(resp);
+        if (resp && resp.error) {
+          console.log(resp.error);
+          showNotification('Manga Update', 'Disable failed: ' + resp.error);
+        } else if (resp.success) {
+          showNotification('Manga Update Disabled', manga_path);
+        }
+        setTimeout(function() {
+          location.reload();
+        }, 2000);
+      });
+    }
+  });
+
+  var startUpdateManga = function(manga_path, done) {
+    done = done || function() {};
+
+    console.log('Update manga...' + manga_path);
+
+    var socket = io();
+
+    socket.on('update-manga-queued', function(data){
+      showNotification('Manga Update', 'Update request queued!');
+    });
+
+    socket.on('update-manga-start', function(data){
+      showNotification('Manga Update', 'Updating...', 0);
+    });
+    socket.on('update-manga-result', function(data){
+      if (data && data.error) {
+        showNotification('Manga Update', 'Update Error: ' + data.error);
+        done(new Error(data.error));
+      } else if (data && data.success) {
+        showNotification('Manga Update', 'Update success!');
+        done();
+      }
+    });
+
+    setTimeout(function() {
+      socket.emit('update-manga', {
+        path: manga_path
+      });
+    }, 200);
+  }
+
+  $('.update-manga').on('click', function(event) {
+    event.preventDefault();
+    var manga_path = $(this).attr('data-manga-path');
+    if (manga_path) {
+      $(this).html('<i class="fa fa-refresh fa-spin fa-fw"></i> Updating');
+      $(this).attr("disabled", "disabled");
+      startUpdateManga(manga_path, function(err) {
+        $(this).removeAttr("disabled");
+        $(this).html('<i class="fa fa-refresh fa-fw"></i> Update');
+        setTimeout(function() {
+          location.reload();
+        }, 2000);
+      });
+    }
+  });
+
+  $('#show-alphabet').on('click', function(event) {
+    event.preventDefault();
+    $('#view-alphabet').removeClass('hidden');
+  });
+  $('#show-search').on('click', function(event) {
+    event.preventDefault();
+    $('#view-search').removeClass('hidden');
+  });
+
+  ///
+
   $('.item-menu-dropdown').on('click', function(event) {
     event.stopPropagation();
+  });
+
+  $('.item-menu-dropdown a').on('click', function(event) {
+    $(this).closest(".dropdown-menu").dropdown("toggle");
   });
 
   $('.dropdown-toggle').dropdown();
 
   $('.open-external-link').on('click', function(event) {
+    event.stopPropagation();
+  });
+
+  $('.open-in-viewer').on('click', function(event) {
     event.stopPropagation();
   });
 
