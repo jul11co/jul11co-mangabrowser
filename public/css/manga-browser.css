@@ -30,14 +30,6 @@ ol.breadcrumb {
   line-height: 16px;        /* fallback */
   max-height: 32px;       /* fallback */
 }
-.row-eq-height {
-  display: flex;
-  flex-wrap: wrap;
-}
-.row-eq-height > [class*='col-'] {
-  display: flex;
-  flex-direction: column;
-}
 
 .item-manga-cover {
   width: 200px;
@@ -172,6 +164,12 @@ table.items tr.item-manga {
   right: 10px;
   text-decoration: none;
 }
+#file-preview-open-manga-viewer {
+  position: absolute;
+  top: 160px;
+  right: 10px;
+  text-decoration: none;
+}
 #file-preview-title-container {
   position: absolute;
   text-align: center;
@@ -217,6 +215,10 @@ table.items tr.item-manga {
   max-height: 100%;
 }
 #file-preview-content img.max {
+  max-width: none;
+  max-height: none;
+}
+#file-preview-content img.original {
   max-width: none;
   max-height: none;
 }

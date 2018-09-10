@@ -4,6 +4,10 @@ $(document).ready(function() {
     event.stopPropagation();
   });
 
+  $('.item-menu-dropdown a').on('click', function(event) {
+    $(this).closest(".dropdown-menu").dropdown("toggle");
+  });
+
   $('.dropdown-toggle').dropdown();
 
   $('.open-external-link').on('click', function(event) {
@@ -40,22 +44,22 @@ $(document).ready(function() {
     event.preventDefault();
     event.stopPropagation();
 
-    var open_path = $(this).attr('data-path');
-    if (open_path && open_path != '') {
+    var folder_path = $(this).attr('data-path');
+    if (folder_path && folder_path != '') {
       $('#deleteConfirmModal .modal-title').text('Delete folder?');
-      $('#deleteConfirmModal .modal-body').text(''+decodeURIComponent(open_path));
+      $('#deleteConfirmModal .modal-body').text(''+decodeURIComponent(folder_path));
 
       $('#delete-confirmed-button').unbind('click');
       $('#delete-confirmed-button').bind('click', function(event) {
         event.preventDefault();
         $('#deleteConfirmModal').modal('toggle');
-        $.post('/delete?path=' + encodeURIComponent(open_path), function(resp) {
+        $.post('/delete?path=' + encodeURIComponent(folder_path), function(resp) {
           // console.log(resp);
           if (resp && resp.error) {
             console.log(resp.error);
             showNotification('Folder delete failed', resp.error);
           } else if (resp.deleted) {
-            showNotification('Folder deleted', decodeURIComponent(open_path));
+            showNotification('Folder deleted', decodeURIComponent(folder_path));
           }
         });
       });
@@ -68,22 +72,22 @@ $(document).ready(function() {
     event.preventDefault();
     event.stopPropagation();
 
-    var open_path = $(this).attr('data-path');
-    if (open_path && open_path != '') {
+    var file_path = $(this).attr('data-path');
+    if (file_path && file_path != '') {
       $('#deleteConfirmModal .modal-title').text('Delete file?');
-      $('#deleteConfirmModal .modal-body').text(''+decodeURIComponent(open_path));
+      $('#deleteConfirmModal .modal-body').text(''+decodeURIComponent(file_path));
 
       $('#delete-confirmed-button').unbind('click');
       $('#delete-confirmed-button').bind('click', function(event) {
         event.preventDefault();
         $('#deleteConfirmModal').modal('toggle');
-        $.post('/delete?path=' + encodeURIComponent(open_path), function(resp) {
+        $.post('/delete?path=' + encodeURIComponent(file_path), function(resp) {
           // console.log(resp);
           if (resp && resp.error) {
             console.log(resp.error);
             showNotification('File delete failed', resp.error);
           } else if (resp.deleted) {
-            showNotification('File deleted', decodeURIComponent(open_path));
+            showNotification('File deleted', decodeURIComponent(file_path));
           }
         });
       });
@@ -96,6 +100,8 @@ $(document).ready(function() {
 
   var current_index = -1;
   var is_previewing = false;
+
+  var preview_items = [];
 
   var previewable_files_count = 0;
   var previewable_files_index_map = {};
@@ -130,7 +136,8 @@ $(document).ready(function() {
   }
 
   var getCurrentPreviewItem = function() {
-    return $('table#items tbody tr').eq(current_index);
+    // return $('table#items tbody tr').eq(current_index);
+    return preview_items[current_index];
   }
 
   var getNextPreviewItem = function() {
@@ -138,13 +145,17 @@ $(document).ready(function() {
     var next_index = current_index+1;
     // console.log('Index:', current_index);
 
-    if (next_index >= $('table#items tbody tr').length) {
+    // if (next_index >= $('table#items tbody tr').length) {
+    //   return null;
+    // }
+    if (next_index >= preview_items.length) {
       return null;
     }
 
     current_index = next_index;
 
-    var $item = $('table#items tbody tr').eq(current_index);
+    // var $item = $('table#items tbody tr').eq(current_index);
+    var $item = preview_items[current_index];
     if ($item) {
       if (isImageFile($item) || isVideoFile($item) || isComicFile($item)) {
         return $item;
@@ -165,7 +176,8 @@ $(document).ready(function() {
     current_index = current_index-1;
     // console.log('Index:', current_index);
 
-    var $item = $('table#items tbody tr').eq(current_index);
+    // var $item = $('table#items tbody tr').eq(current_index);
+    var $item = preview_items[current_index];
     if ($item) {
       if (isImageFile($item) || isVideoFile($item) || isComicFile($item)) {
         return $item;
@@ -175,6 +187,22 @@ $(document).ready(function() {
     } else {
       return getPrevPreviewItem();
     }
+  }
+
+  var preloadImage = function(image_src, loaded) {
+    $('<img />').on('load', loaded).each(function(){
+      if (this.complete) {
+        $(this).trigger('load');
+      }
+    }).attr("src", image_src);
+  }
+
+  var onImageLoaded = function($img, loaded) {
+    $img.on('load', loaded).each(function(){
+      if (this.complete) {
+        $(this).trigger('load');
+      }
+    });
   }
 
   var previewImageFile = function($item) {
@@ -209,7 +237,7 @@ $(document).ready(function() {
     $('#file-preview-content').html(
       '<span style="display: inline-block;height: 100%;vertical-align: middle;"></span>' +
       '<video width="100%" height="95%" controls="controls" autoplay>' +
-        '<source src="/video/?path=' +  encodeURIComponent(file_path) + '" type="video/mp4" />' +
+        '<source src="/video?path=' +  encodeURIComponent(file_path) + '" type="video/mp4" />' +
       '</video>'
     );
     $("#previewModal").modal('show');
@@ -222,7 +250,7 @@ $(document).ready(function() {
     $('#file-preview-content').html(
       '<span style="display: inline-block;height: 100%;vertical-align: middle;"></span>' +
       '<video width="100%" height="95%" controls="controls" autoplay>' +
-        '<source src="/video/?path=' +  encodeURIComponent(file_path) + '" type="video/webm" />' +
+        '<source src="/video?path=' +  encodeURIComponent(file_path) + '" type="video/webm" />' +
       '</video>'
     );
     $("#previewModal").modal('show');
@@ -252,15 +280,34 @@ $(document).ready(function() {
         var preview_html = 
           '<span style="display: inline-block;height: 100%;vertical-align: middle;"></span>';
 
-        if (data.pages && data.pages.length) {
-          preview_html += '<img src="/comic?path=' + encodeURIComponent(file_path) + 
-            '&page=0" class="fadeIn animated ' + (file_preview_image_size||'fit') + '" alt="Page - 1">';
-        }
+        // if (data.pages && data.pages.length) {
+        //   preview_html += '<img src="/comic?path=' + encodeURIComponent(file_path) + 
+        //     '&page=0" class="fadeIn animated ' + (file_preview_image_size||'fit') + '" alt="Page - 1">';
+        // }
 
         $('#file-preview-content').html(preview_html);
 
+        if (data.pages && data.pages.length) {
+          var $page_image_0 = $('<img src="/comic?path=' + encodeURIComponent(file_path) + 
+            '&page=0" class="fadeIn animated ' + (file_preview_image_size||'fit') + '" alt="Page - 1">');
+          
+          onImageLoaded($page_image_0, function() {
+            $page_image_0.attr('data-width', $page_image_0.prop('naturalWidth'));
+            $page_image_0.attr('data-height', $page_image_0.prop('naturalHeight'));
+            if (file_preview_image_size != 'fit' && file_preview_image_size != 'fit-height') {
+              applyZoom($page_image_0);
+            }
+          });
+          
+          $('#file-preview-content').append($page_image_0);
+          
+          if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
+            applyZoom($page_image_0);
+          }
+        }
+
         if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
-          applyZoom();
+          // applyZoom();
           if (!$('#file-preview-actions').hasClass('hidden')) {
             showZoom();
           }
@@ -274,17 +321,26 @@ $(document).ready(function() {
           $('#file-preview-load-more-button').removeClass('hidden');
 
           var loadNextPage = function() {
-            $('#file-preview-content').append('<img class="lazyload fadeIn animated extra ' + 
+            var $page_image = $('<img class="lazyload fadeIn animated extra ' + 
               (file_preview_image_size||'fit-width') + '"' + 
               ' src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="' +
               ' data-src="/comic?path=' + encodeURIComponent(file_path) + '&page=' + loaded_pages + 
-              '" alt="Page - ' + (loaded_pages+1) + '">'
-              );
+              '" alt="Page - ' + (loaded_pages+1) + '">')
+              
+            onImageLoaded($page_image, function() {
+              $page_image.attr('data-width', $page_image.prop('naturalWidth'));
+              $page_image.attr('data-height', $page_image.prop('naturalHeight'));
+              if (file_preview_image_size != 'fit' && file_preview_image_size != 'fit-height') {
+                applyZoom($page_image);
+              }
+            });
+
+            $('#file-preview-content').append($page_image);
 
             loaded_pages++;
 
             if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
-              applyZoom();
+              applyZoom($page_image);
             }
 
             if (loaded_pages >= data.pages.length) {
@@ -406,6 +462,8 @@ $(document).ready(function() {
       previewItem($item);
     }
   }
+  
+  // Zooming
 
   var hideZoom = function() {
     $('#zoom-control').addClass('hidden');
@@ -415,40 +473,119 @@ $(document).ready(function() {
     $('#zoom-control').removeClass('hidden');
   }
 
+  var zoomIn = function() {
+    var zoom_value = $('#zoom-value').attr('data-value');
+    if (zoom_value == 'auto') {
+      zoom_value = 100;
+    } else {
+      zoom_value = parseInt(zoom_value);
+    }
+    if (!isNaN(zoom_value)) {
+      zoom_value += 5;
+      if (file_preview_image_size == 'fit-width' && zoom_value >= 100) {
+        zoom_value = 100;
+        $('#zoom-control #zoom-in').addClass('disable');
+      } else {
+        $('#zoom-control #zoom-in').removeClass('disable');
+      }
+      $('#zoom-value').attr('data-value', zoom_value);
+      // $('#file-preview-content img').css('width', zoom_value+'%');
+      applyZoom();
+    }
+  }
+
+  var zoomOut = function() {
+    var zoom_value = $('#zoom-value').attr('data-value');
+    if (zoom_value == 'auto') {
+      zoom_value = 100;
+    } else {
+      zoom_value = parseInt(zoom_value);
+    }
+    if (!isNaN(zoom_value)) {
+      zoom_value -= 5;
+      if (zoom_value <= 10) {
+        zoom_value = 10;
+        $('#zoom-control #zoom-out').addClass('disable');
+      } else {
+        $('#zoom-control #zoom-out').removeClass('disable');
+      }
+      $('#zoom-value').attr('data-value', zoom_value);
+      // $('#file-preview-content img').css('width', zoom_value+'%');
+      applyZoom();
+    }
+  }
+
+  var setZoom = function(width) {
+    $('#zoom-value').attr('data-value', width);
+  }
+
   var resetZoom = function() {
-    // $('#zoom-value').attr('data-value', '100');
+    $('#zoom-value').attr('data-value', 'auto');
     $('#file-preview-content img').css('width', 'auto');
   }
 
-  var applyZoom = function() {
-    var zoom_value = $('#zoom-value').attr('data-value');
-    $('#file-preview-content img').css('width', zoom_value+'%');
+  var zoomImage = function($img, zoom_value) {
+    var img_width = $img.attr('data-width');
+    if (img_width) img_width = parseInt(img_width);
+    if (file_preview_image_size != 'fit-width' && img_width && !isNaN(img_width)) {
+      var css_width = ((zoom_value*img_width)/100).toFixed(0);
+      $img.css('width', css_width+'px');
+    } else {
+      $img.css('width', zoom_value+'%');
+    }
   }
 
+  var applyZoom = function($img) {
+    var zoom_value = $('#zoom-value').attr('data-value');
+    if (zoom_value == 'auto') {
+      if ($img) {
+        $img.css('width', 'auto');
+      } else {
+        $('#file-preview-content img').css('width', 'auto');
+      }
+      return;
+    }
+    zoom_value = parseInt(zoom_value);
+    if (!isNaN(zoom_value)) {
+      // $('#file-preview-content img').css('width', zoom_value+'%');
+      if ($img) {
+        zoomImage($img, zoom_value);
+      } else {
+        $('#file-preview-content img').each(function() {
+          zoomImage($(this), zoom_value);
+        });
+      }
+    }
+  }
+
+  //
+
   var togglePreviewImageSize = function() {
-    // 'fit' -> 'fit-width' -> 'fit-height' -> 'max' -> 'fit' -> ...
-    if (file_preview_image_size == 'fit') {
+    // 'fit' -> 'max' -> 'fit-width' -> 'fit-height' -> 'fit' -> ...
+    if (file_preview_image_size == 'fit') { // 'fit' -> 'max'
+      file_preview_image_size = 'max';
+      $('#file-preview-image-resize-button').html('<b style="font-size: 16px;line-height: 12px;">1:1</b>');
+      $('#file-preview-content img').removeClass('fit').addClass('max');
+      showZoom();
+      resetZoom();
+      applyZoom();
+    } else if (file_preview_image_size == 'max') { // 'max' -> 'fit-width'
       file_preview_image_size = 'fit-width';
       $('#file-preview-image-resize-button').html('<i class="fa fa-arrows-h fa-lg fa-fw"></i>');
-      $('#file-preview-content img').removeClass('fit').addClass('fit-width');
+      $('#file-preview-content img').removeClass('max').addClass('fit-width');
       showZoom();
+      setZoom(100);
       applyZoom();
-    } else if (file_preview_image_size == 'fit-width') {
+    } else if (file_preview_image_size == 'fit-width') { // 'fit-width' -> 'fit-height'
       file_preview_image_size = 'fit-height';
       $('#file-preview-image-resize-button').html('<i class="fa fa-arrows-v fa-lg fa-fw"></i>');
       $('#file-preview-content img').removeClass('fit-width').addClass('fit-height');
       hideZoom();
       resetZoom();
-    } else if (file_preview_image_size == 'fit-height') {
-      file_preview_image_size = 'max';
-      $('#file-preview-image-resize-button').html('<b style="font-size: 16px;line-height: 12px;">1:1</b>');
-      $('#file-preview-content img').removeClass('fit-height').addClass('max');
-      showZoom();
-      applyZoom();
-    } else {
+    } else { // 'fit-height' -> 'fit'
       file_preview_image_size = 'fit';
       $('#file-preview-image-resize-button').html('<i class="fa fa-arrows fa-lg fa-fw"></i>');
-      $('#file-preview-content img').removeClass('max').addClass('fit');
+      $('#file-preview-content img').removeClass('fit-height').addClass('fit');
       hideZoom();
       resetZoom();
     }
@@ -572,6 +709,7 @@ $(document).ready(function() {
     if (isImageFile($item) || isVideoFile($item) || isComicFile($item)) {
       previewable_files_index_map[$item.index()] = previewable_files_count;
       previewable_files_count++;
+      preview_items.push($item);
     }
   });
 
@@ -583,8 +721,9 @@ $(document).ready(function() {
       event.preventDefault();
 
       var folder_path = $item.attr('data-path');
-      window.location.href = '/?dir=' + encodeURIComponent(folder_path);
+      window.location.href = '/files?dir=' + encodeURIComponent(folder_path);
     } else {
+      event.preventDefault();
       setItemActive($item);
 
       current_index = $item.index();
@@ -594,38 +733,45 @@ $(document).ready(function() {
     }
   });
 
+  $('#grid-items .grid-item').each(function() {
+    var $item = $(this);
+
+    if (isImageFile($item) || isVideoFile($item) || isComicFile($item)) {
+      previewable_files_index_map[$item.index()] = previewable_files_count;
+      previewable_files_count++;
+      preview_items.push($item);
+      $item.attr('data-preview-index', preview_items.length-1);
+    }
+  });
+
+  $('#grid-items .grid-item a.item-thumb').on('click', function(event) {
+    // event.preventDefault();
+
+    var $item = $(this).closest('.grid-item');
+    if (isFolder($item)) {
+      event.preventDefault();
+
+      var folder_path = $item.attr('data-path');
+      window.location.href = '/files?dir=' + encodeURIComponent(folder_path);
+    } else if (isImageFile($item) || isVideoFile($item) || isComicFile($item)) {
+      event.preventDefault();
+      setItemActive($item);
+
+      current_index = parseInt($item.attr('data-preview-index'));
+      // console.log('Index:', $(this).index());
+
+      previewItem($item);
+    }
+  });
+
   $('#zoom-control #zoom-in').on('click', function(event) {
     event.preventDefault();
-    var zoom_value = $('#zoom-value').attr('data-value');
-    zoom_value = parseInt(zoom_value);
-    if (!isNaN(zoom_value)) {
-      zoom_value += 5;
-      if (file_preview_image_size == 'fit-width' && zoom_value >= 100) {
-        zoom_value = 100;
-        $('#zoom-control #zoom-in').addClass('disable');
-      } else {
-        $('#zoom-control #zoom-in').removeClass('disable');
-      }
-      $('#zoom-value').attr('data-value', zoom_value);
-      $('#file-preview-content img').css('width', zoom_value+'%');
-    }
+    zoomIn();
   });
 
   $('#zoom-control #zoom-out').on('click', function(event) {
     event.preventDefault();
-    var zoom_value = $('#zoom-value').attr('data-value');
-    zoom_value = parseInt(zoom_value);
-    if (!isNaN(zoom_value)) {
-      zoom_value -= 5;
-      if (zoom_value <= 10) {
-        zoom_value = 10;
-        $('#zoom-control #zoom-out').addClass('disable');
-      } else {
-        $('#zoom-control #zoom-out').removeClass('disable');
-      }
-      $('#zoom-value').attr('data-value', zoom_value);
-      $('#file-preview-content img').css('width', zoom_value+'%');
-    }
+    zoomOut();
   });
 
 })

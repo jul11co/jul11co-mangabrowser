@@ -15,7 +15,8 @@ $(document).ready(function() {
 
   ///
 
-  var startReloadIndex = function() {
+  var startReloadIndex = function(done) {
+    done = done || function() {};
 
     console.log('Reload index...');
 
@@ -25,19 +26,28 @@ $(document).ready(function() {
       showNotification('Manga Index', 'Reloading...', 0);
     });
 
-    socket.on('reload-success', function(data){
-      showNotification('Manga Index', 'Reload success!');
-      setTimeout(function() {
-        window.location.href = '/';
-      }, 1000);
-    });
     socket.on('reload-in-progress', function(data){
       showNotification('Manga Index', 'Reload in progress!');
     });
+
+    socket.on('reload-progress', function(data) {
+      if (data.current && data.total) {
+        showNotification('Manga Index', 'Reloading... (' + data.current+'/'+data.total +')', 0);
+      }
+    });
+
     socket.on('reload-error', function(data){
       if (data && data.error) {
         showNotification('Manga Index', 'Reload Error: ' + data.error);
+        done(new Error(data.error));
+      } else {
+        done(new Error('Unknown error!'));
       }
+    });
+
+    socket.on('reload-success', function(data){
+      showNotification('Manga Index', 'Reload success!');
+      done();
     });
 
     setTimeout(function() {
@@ -47,7 +57,13 @@ $(document).ready(function() {
 
   $('#index-reload').on('click', function(event) {
     event.preventDefault();
-    startReloadIndex();
+    startReloadIndex(function(err) {
+      if (!err) {
+        setTimeout(function() {
+          window.location.href = '/mangalist?mangasort=last_chapter_update';
+        }, 1000);
+      }
+    });
   });
 
   ///
@@ -104,6 +120,7 @@ $(document).ready(function() {
     socket.on('update-manga-start', function(data){
       showNotification('Manga Update', 'Updating...', 0);
     });
+    
     socket.on('update-manga-result', function(data){
       if (data && data.error) {
         showNotification('Manga Update', 'Update Error: ' + data.error);
@@ -275,6 +292,22 @@ $(document).ready(function() {
     }
   }
 
+  var preloadImage = function(image_src, loaded) {
+    $('<img />').on('load', loaded).each(function(){
+      if (this.complete) {
+        $(this).trigger('load');
+      }
+    }).attr("src", image_src);
+  }
+
+  var onImageLoaded = function($img, loaded) {
+    $img.on('load', loaded).each(function(){
+      if (this.complete) {
+        $(this).trigger('load');
+      }
+    });
+  }
+
   var previewImageFile = function($item) {
     var file_path = $item.attr('data-file-path');
     // console.log('Preview:', file_link);
@@ -286,7 +319,7 @@ $(document).ready(function() {
     );
     $("#previewModal").modal('show');
 
-    if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
+    if (isZoomable()) {
       applyZoom();
       if (!$('#file-preview-actions').hasClass('hidden')) {
         showZoom();
@@ -307,7 +340,7 @@ $(document).ready(function() {
     $('#file-preview-content').html(
       '<span style="display: inline-block;height: 100%;vertical-align: middle;"></span>' +
       '<video width="100%" height="95%" controls="controls" autoplay>' +
-        '<source src="/video/?path=' +  encodeURIComponent(file_path) + '" type="video/mp4" />' +
+        '<source src="/video?path=' +  encodeURIComponent(file_path) + '" type="video/mp4" />' +
       '</video>'
     );
     $("#previewModal").modal('show');
@@ -320,7 +353,7 @@ $(document).ready(function() {
     $('#file-preview-content').html(
       '<span style="display: inline-block;height: 100%;vertical-align: middle;"></span>' +
       '<video width="100%" height="95%" controls="controls" autoplay>' +
-        '<source src="/video/?path=' +  encodeURIComponent(file_path) + '" type="video/webm" />' +
+        '<source src="/video?path=' +  encodeURIComponent(file_path) + '" type="video/webm" />' +
       '</video>'
     );
     $("#previewModal").modal('show');
@@ -335,6 +368,16 @@ $(document).ready(function() {
       // '<span style="color: white;"><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i></span>'
     );
     
+    if ($item.attr('data-chapter-url')) {
+      $('#file-preview-open-external-button').removeClass('hidden');
+      $('#file-preview-open-external-button').attr('href', $item.attr('data-chapter-url'));
+
+      $('#file-preview-open-manga-viewer').removeClass('hidden');
+      $('#file-preview-open-manga-viewer').attr('href', '/viewer?path=' + 
+        encodeURIComponent($item.attr('data-file-path').replace('.cbz',''))
+      );
+    }
+
     $.getJSON('/comic?path=' + encodeURIComponent(file_path), function(data) {
       console.log(data);
 
@@ -350,15 +393,34 @@ $(document).ready(function() {
         var preview_html = 
           '<span style="display: inline-block;height: 100%;vertical-align: middle;"></span>';
 
-        if (data.pages && data.pages.length) {
-          preview_html += '<img src="/comic?path=' + encodeURIComponent(file_path) + 
-            '&page=0" class="fadeIn animated ' + (file_preview_image_size||'fit') + '" alt="Page - 1">';
-        }
-
         $('#file-preview-content').html(preview_html);
 
-        if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
-          applyZoom();
+        if (data.pages && data.pages.length) {
+          // preview_html += '<img src="/comic?path=' + encodeURIComponent(file_path) + 
+          //   '&page=0" class="fadeIn animated ' + (file_preview_image_size||'fit') + '" alt="Page - 1">';
+
+          var $page_image_0 = $('<img src="/comic?path=' + encodeURIComponent(file_path) + 
+            '&page=0" class="fadeIn animated ' + (file_preview_image_size||'fit') + '" alt="Page - 1">');
+
+          onImageLoaded($page_image_0, function() {
+            $page_image_0.attr('data-width', $page_image_0.prop('naturalWidth'));
+            $page_image_0.attr('data-height', $page_image_0.prop('naturalHeight'));
+            if (isZoomable()) {
+              applyZoom($page_image_0);
+            }
+          });
+
+          $('#file-preview-content').append($page_image_0);
+
+          if (isZoomable()) {
+            applyZoom($page_image_0);
+          }
+        }
+
+        // $('#file-preview-content').html(preview_html);
+
+        if (isZoomable()) {
+          // applyZoom();
           if (!$('#file-preview-actions').hasClass('hidden')) {
             showZoom();
           }
@@ -372,7 +434,16 @@ $(document).ready(function() {
           $('#file-preview-load-more-button').removeClass('hidden');
 
           var loadNextPage = function() {
-            $('#file-preview-content').append(
+            // $('#file-preview-content').append(
+            //   '<img class="lazyload fadeIn animated extra ' + 
+            //     (file_preview_image_size||'fit-width') + '"' + 
+            //     ' src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="' +
+            //     ' data-src="/comic?path=' + encodeURIComponent(file_path) + '&page=' + loaded_pages + 
+            //     '" alt="Page - ' + (loaded_pages+1) + 
+            //     '">'
+            //   );
+
+            var $page_image = $(
               '<img class="lazyload fadeIn animated extra ' + 
                 (file_preview_image_size||'fit-width') + '"' + 
                 ' src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="' +
@@ -381,21 +452,24 @@ $(document).ready(function() {
                 '">'
               );
 
-            if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
-              applyZoom();
+            onImageLoaded($page_image, function() {
+              $page_image.attr('data-width', $page_image.prop('naturalWidth'));
+              $page_image.attr('data-height', $page_image.prop('naturalHeight'));
+              if (isZoomable()) {
+                applyZoom($page_image);
+              }
+            });
+
+            $('#file-preview-content').append($page_image);
+
+            if (isZoomable()) {
+              applyZoom($page_image);
             }
 
             loaded_pages++;
 
             if (loaded_pages >= data.pages.length) {
-              // $('#file-preview-load-more-button').addClass('hidden');
               $('#file-preview-content').unbind('scroll');
-            } else {
-              // setTimeout(function() {
-              //   if (loaded_pages < data.pages.length) {
-              //     $('#file-preview-load-more-button').removeClass('hidden');
-              //   }
-              // },500);
             }
 
             // console.log('Loaded pages:', loaded_pages +'/' + data.pages.length);
@@ -467,6 +541,16 @@ $(document).ready(function() {
       // '<span style="color: white;"><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i></span>'
     );
 
+    if ($item.attr('data-chapter-url')) {
+      $('#file-preview-open-external-button').removeClass('hidden');
+      $('#file-preview-open-external-button').attr('href', $item.attr('data-chapter-url'));
+      
+      $('#file-preview-open-manga-viewer').removeClass('hidden');
+      $('#file-preview-open-manga-viewer').attr('href', '/viewer?path=' + 
+        encodeURIComponent($item.attr('data-file-path').replace('.cbz',''))
+      );
+    }
+
     var is_chapter_folder = $item.hasClass('item-manga-chapter-folder');
     
     $.getJSON('/manga_chapter?path=' + encodeURIComponent(chapter_path), function(data) {
@@ -486,18 +570,37 @@ $(document).ready(function() {
         var preview_html = 
           '<span style="display: inline-block;height: 100%;vertical-align: middle;"></span>';
 
+        $('#file-preview-content').html(preview_html);
+
         if (data.pages && data.pages.length) {
           var page_src = is_chapter_folder ? 
             ('/file?path=' + encodeURIComponent(chapter_path+'/'+data.pages[0].file))
             : ('/image?src=' + encodeURIComponent(data.pages[0].src) + '&reader=1"');
-          preview_html += '<img src="' + page_src + 
-            '" class="fadeIn animated ' + (file_preview_image_size||'fit') + '" alt="Page - 1">';
+          // preview_html += '<img src="' + page_src + 
+          //   '" class="fadeIn animated ' + (file_preview_image_size||'fit') + '" alt="Page - 1">';
+
+          var $page_image_0 = $('<img src="' + page_src + 
+            '" class="fadeIn animated ' + (file_preview_image_size||'fit') + '" alt="Page - 1">');
+
+          onImageLoaded($page_image_0, function(){
+            $page_image_0.attr('data-width', $page_image_0.prop('naturalWidth'));
+            $page_image_0.attr('data-height', $page_image_0.prop('naturalHeight'));
+            if (isZoomable()) {
+              applyZoom($page_image_0);
+            }
+          });
+
+          $('#file-preview-content').append($page_image_0);
+
+          if (isZoomable()) {
+            applyZoom($page_image_0);
+          }
         }
 
-        $('#file-preview-content').html(preview_html);
+        // $('#file-preview-content').html(preview_html);
 
-        if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
-          applyZoom();
+        if (isZoomable()) {
+          // applyZoom();
           if (!$('#file-preview-actions').hasClass('hidden')) {
             showZoom();
           }
@@ -516,16 +619,32 @@ $(document).ready(function() {
               ('/file?path=' + encodeURIComponent(chapter_path+'/'+next_page.file))
               : ('/image?src=' + encodeURIComponent(next_page.src) + '&reader=1"');
 
-            $('#file-preview-content').append(
-              '<img class="lazyload fadeIn animated extra ' + 
-                (file_preview_image_size||'fit-width') + '"' + 
-                ' src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="' +
-                ' data-src="' + page_src + '" alt="Page - ' + (loaded_pages+1) + 
-                '">'
-              );
+            // $('#file-preview-content').append(
+            //   '<img class="lazyload fadeIn animated extra ' + 
+            //     (file_preview_image_size||'fit-width') + '"' + 
+            //     ' src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="' +
+            //     ' data-src="' + page_src + '" alt="Page - ' + (loaded_pages+1) + 
+            //     '">'
+            //   );
 
-            if (file_preview_image_size == 'fit-width' || file_preview_image_size == 'max') {
-              applyZoom();
+            var $page_image = $('<img class="lazyload fadeIn animated extra ' + 
+              (file_preview_image_size||'fit-width') + '"' + 
+              ' src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs="' +
+              ' data-src="' + page_src + '" alt="Page - ' + (loaded_pages+1) + 
+              '">');
+
+            onImageLoaded($page_image, function(){
+              $page_image.attr('data-width', $page_image.prop('naturalWidth'));
+              $page_image.attr('data-height', $page_image.prop('naturalHeight'));
+              if (isZoomable()) {
+                applyZoom($page_image);
+              }
+            });
+
+            $('#file-preview-content').append($page_image);
+
+            if (isZoomable()) {
+              applyZoom($page_image);
             }
 
             loaded_pages++;
@@ -617,6 +736,9 @@ $(document).ready(function() {
 
       hideZoom();
 
+      $('#file-preview-open-external-button').addClass('hidden');
+      $('#file-preview-open-manga-viewer').addClass('hidden');
+      
       var index = previewable_files_index_map[$item.index()];
       $('#file-preview-subtitle').text('' + (index+1) + ' of ' + previewable_files_count);
 
@@ -652,6 +774,12 @@ $(document).ready(function() {
     }
   }
 
+  // Zooming
+
+  var isZoomable = function() {
+    return file_preview_image_size == 'max' || file_preview_image_size == 'fit-width';
+  }
+
   var hideZoom = function() {
     $('#zoom-control').addClass('hidden');
   }
@@ -660,40 +788,119 @@ $(document).ready(function() {
     $('#zoom-control').removeClass('hidden');
   }
 
+  var zoomIn = function() {
+    var zoom_value = $('#zoom-value').attr('data-value');
+    if (zoom_value == 'auto') {
+      zoom_value = 100;
+    } else {
+      zoom_value = parseInt(zoom_value);
+    }
+    if (!isNaN(zoom_value)) {
+      zoom_value += 5;
+      if (file_preview_image_size == 'fit-width' && zoom_value >= 100) {
+        zoom_value = 100;
+        $('#zoom-control #zoom-in').addClass('disable');
+      } else {
+        $('#zoom-control #zoom-in').removeClass('disable');
+      }
+      $('#zoom-value').attr('data-value', zoom_value);
+      // $('#file-preview-content img').css('width', zoom_value+'%');
+      applyZoom();
+    }
+  }
+
+  var zoomOut = function() {
+    var zoom_value = $('#zoom-value').attr('data-value');
+    if (zoom_value == 'auto') {
+      zoom_value = 100;
+    } else {
+      zoom_value = parseInt(zoom_value);
+    }
+    if (!isNaN(zoom_value)) {
+      zoom_value -= 5;
+      if (zoom_value <= 10) {
+        zoom_value = 10;
+        $('#zoom-control #zoom-out').addClass('disable');
+      } else {
+        $('#zoom-control #zoom-out').removeClass('disable');
+      }
+      $('#zoom-value').attr('data-value', zoom_value);
+      // $('#file-preview-content img').css('width', zoom_value+'%');
+      applyZoom();
+    }
+  }
+
+  var setZoom = function(width) {
+    $('#zoom-value').attr('data-value', width);
+  }
+
   var resetZoom = function() {
-    // $('#zoom-value').attr('data-value', '100');
+    $('#zoom-value').attr('data-value', 'auto');
     $('#file-preview-content img').css('width', 'auto');
   }
 
-  var applyZoom = function() {
-    var zoom_value = $('#zoom-value').attr('data-value');
-    $('#file-preview-content img').css('width', zoom_value+'%');
+  var zoomImage = function($img, zoom_value) {
+    var img_width = $img.attr('data-width');
+    if (img_width) img_width = parseInt(img_width);
+    if (file_preview_image_size != 'fit-width' && img_width && !isNaN(img_width)) {
+      var css_width = ((zoom_value*img_width)/100).toFixed(0);
+      $img.css('width', css_width+'px');
+    } else {
+      $img.css('width', zoom_value+'%');
+    }
   }
 
+  var applyZoom = function($img) {
+    var zoom_value = $('#zoom-value').attr('data-value');
+    if (zoom_value == 'auto') {
+      if ($img) {
+        $img.css('width', 'auto');
+      } else {
+        $('#file-preview-content img').css('width', 'auto');
+      }
+      return;
+    }
+    zoom_value = parseInt(zoom_value);
+    if (!isNaN(zoom_value)) {
+      // $('#file-preview-content img').css('width', zoom_value+'%');
+      if ($img) {
+        zoomImage($img, zoom_value);
+      } else {
+        $('#file-preview-content img').each(function() {
+          zoomImage($(this), zoom_value);
+        });
+      }
+    }
+  }
+
+  //
+
+  // Toggle sequence: 'fit' -> 'max' -> 'fit-width' -> 'fit-height' -> 'fit' -> ...
   var togglePreviewImageSize = function() {
-    // 'fit' -> 'fit-width' -> 'fit-height' -> 'max' -> 'fit' -> ...
-    if (file_preview_image_size == 'fit') {
+    if (file_preview_image_size == 'fit') { // 'fit' -> 'max'
+      file_preview_image_size = 'max';
+      $('#file-preview-image-resize-button').html('<b style="font-size: 16px;line-height: 12px;">1:1</b>');
+      $('#file-preview-content img').removeClass('fit').addClass('max');
+      showZoom();
+      resetZoom();
+      // applyZoom();
+    } else if (file_preview_image_size == 'max') { // -> 'max' -> 'fit-width'
       file_preview_image_size = 'fit-width';
       $('#file-preview-image-resize-button').html('<i class="fa fa-arrows-h fa-lg fa-fw"></i>');
-      $('#file-preview-content img').removeClass('fit').addClass('fit-width');
+      $('#file-preview-content img').removeClass('max').addClass('fit-width');
       showZoom();
+      setZoom(100);
       applyZoom();
-    } else if (file_preview_image_size == 'fit-width') {
+    } else if (file_preview_image_size == 'fit-width') { // 'fit-width' -> 'fit-height'
       file_preview_image_size = 'fit-height';
       $('#file-preview-image-resize-button').html('<i class="fa fa-arrows-v fa-lg fa-fw"></i>');
       $('#file-preview-content img').removeClass('fit-width').addClass('fit-height');
       hideZoom();
       resetZoom();
-    } else if (file_preview_image_size == 'fit-height') {
-      file_preview_image_size = 'max';
-      $('#file-preview-image-resize-button').html('<b style="font-size: 16px;line-height: 12px;">1:1</b>');
-      $('#file-preview-content img').removeClass('fit-height').addClass('max');
-      showZoom();
-      applyZoom();
-    } else {
+    } else { // 'fit-height' -> 'fit'
       file_preview_image_size = 'fit';
       $('#file-preview-image-resize-button').html('<i class="fa fa-arrows fa-lg fa-fw"></i>');
-      $('#file-preview-content img').removeClass('max').addClass('fit');
+      $('#file-preview-content img').removeClass('fit-height').addClass('fit');
       hideZoom();
       resetZoom();
     }
@@ -828,12 +1035,12 @@ $(document).ready(function() {
       event.preventDefault();
 
       var folder_path = $item.attr('data-path');
-      window.location.href = '/?dir=' + encodeURIComponent(folder_path);
+      window.location.href = '/files?dir=' + encodeURIComponent(folder_path);
     } else if (isManga($item)) {
       event.preventDefault();
 
       var manga_path = $item.attr('data-path');
-      window.location.href = '/?manga=' + encodeURIComponent(manga_path);
+      window.location.href = '/manga?path=' + encodeURIComponent(manga_path);
     } else {
       setItemActive($item);
 
@@ -846,36 +1053,12 @@ $(document).ready(function() {
 
   $('#zoom-control #zoom-in').on('click', function(event) {
     event.preventDefault();
-    var zoom_value = $('#zoom-value').attr('data-value');
-    zoom_value = parseInt(zoom_value);
-    if (!isNaN(zoom_value)) {
-      zoom_value += 5;
-      if (file_preview_image_size == 'fit-width' && zoom_value >= 100) {
-        zoom_value = 100;
-        $('#zoom-control #zoom-in').addClass('disable');
-      } else {
-        $('#zoom-control #zoom-in').removeClass('disable');
-      }
-      $('#zoom-value').attr('data-value', zoom_value);
-      $('#file-preview-content img').css('width', zoom_value+'%');
-    }
+    zoomIn();
   });
 
   $('#zoom-control #zoom-out').on('click', function(event) {
     event.preventDefault();
-    var zoom_value = $('#zoom-value').attr('data-value');
-    zoom_value = parseInt(zoom_value);
-    if (!isNaN(zoom_value)) {
-      zoom_value -= 5;
-      if (zoom_value <= 10) {
-        zoom_value = 10;
-        $('#zoom-control #zoom-out').addClass('disable');
-      } else {
-        $('#zoom-control #zoom-out').removeClass('disable');
-      }
-      $('#zoom-value').attr('data-value', zoom_value);
-      $('#file-preview-content img').css('width', zoom_value+'%');
-    }
+    zoomOut();
   });
 
 });

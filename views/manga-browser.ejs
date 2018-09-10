@@ -13,6 +13,7 @@
     <script src="/js/jquery-3.2.1.min.js"></script>
     <script src="/js/bootstrap.min.js"></script>
     <script src="/js/lazysizes.min.js"></script>
+    <script src="/js/moment.min.js"></script>
     <script src="/js/socket.io.js"></script>
     <script src="/js/manga-browser.js"></script>
   </head>
@@ -53,55 +54,54 @@
             </li>
           </ul>
           <ul class="nav navbar-nav navbar-right">
-            <li><a id="index-reload" href="/reload_index" title="Reload index"><i class="fa fa-refresh fa-fw"></i> Reload Index</a></li>
+            <li><a id="index-reload" href="/reload_index" title="Reload index"><i class="fa fa-refresh fa-fw"></i> Reload</a></li>
           </ul>
         </div>
       </div>
     </nav>
 
-    <div class="container" style="margin-top: 75px;">
-
-      <div id="browser-content" class="row">
-
-        <div class="col-md-2 hidden-sm hidden-xs" style="padding-right: 0;padding-left: 0;">
-          <ul class="nav nav-pills nav-stacked">
-            <li class=""><a href="/mangalist"><i class="fa fa-book fa-fw"></i> Manga List</a></li>
-            <li class="nav-divider"></li>
-            <%if (scope == 'manga_list' && !query.view) {%>
-            <li class="<%=(query.view=='search')?'active':''%>"><a data-toggle="pill" id="show-search" href="#view-search"><i class="fa fa-search fa-fw"></i> Search</a></li>
-            <li class="<%=(query.view=='alphabet')?'active':''%>"><a data-toggle="pill" id="show-alphabet" href="#view-alphabet"><i class="fa fa-sort-alpha-asc fa-fw"></i> A-Z</a></li>
-            <%} else {%>
-            <li class="<%=(query.view=='search')?'active':''%>"><a href="/mangalist?view=search"><i class="fa fa-search fa-fw"></i> Search</a></li>
-            <li class="<%=(query.view=='alphabet')?'active':''%>"><a href="/mangalist?view=alphabet"><i class="fa fa-sort-alpha-asc fa-fw"></i> A-Z</a></li>
-            <%}%>
-            <li class="nav-divider"></li>
-            <li class="nav-head">Filters</li>
-            <%manga_filters.forEach(function(manga_filter) {%>
-              <%if (manga_indices[manga_filter.index] && manga_indices[manga_filter.index].popular.length) {%>
-            <li class="<%=(query.view==manga_filter.index)?'active':''%>">
-              <a href="/mangalist?view=<%=manga_filter.index%>"><span class="badge badge-pill badge-default pull-right"><%=manga_indices[manga_filter.index].count||0%></span> <%-manga_filter.icon||'<i class="fa fa-tags fa-fw"></i>'%> <%=manga_filter.title%></a>
-            </li>
+    <div class="content">
+      <div class="container" style="margin-top: 75px;">
+        <div id="browser-content" class="row">
+          <div class="col-md-2 hidden-sm hidden-xs" style="padding-right: 0;padding-left: 0;">
+            <ul class="nav nav-pills nav-stacked">
+              <li class=""><a href="/mangalist"><i class="fa fa-book fa-fw"></i> Manga List</a></li>
+              <li class="nav-divider"></li>
+              <%if (scope == 'manga_list' && !query.view) {%>
+              <li class="<%=(query.view=='search')?'active':''%>"><a data-toggle="pill" id="show-search" href="#view-search"><i class="fa fa-search fa-fw"></i> Search</a></li>
+              <li class="<%=(query.view=='alphabet')?'active':''%>"><a data-toggle="pill" id="show-alphabet" href="#view-alphabet"><i class="fa fa-sort-alpha-asc fa-fw"></i> A-Z</a></li>
+              <%} else {%>
+              <li class="<%=(query.view=='search')?'active':''%>"><a href="/mangalist?view=search"><i class="fa fa-search fa-fw"></i> Search</a></li>
+              <li class="<%=(query.view=='alphabet')?'active':''%>"><a href="/mangalist?view=alphabet"><i class="fa fa-sort-alpha-asc fa-fw"></i> A-Z</a></li>
               <%}%>
-            <%});%>
-          </ul>
-        </div>
+              <li class="nav-divider"></li>
+              <!-- <li class="nav-head">Filters</li> -->
+              <%manga_filters.forEach(function(manga_filter) {%>
+                <%if (manga_indices[manga_filter.index] && manga_indices[manga_filter.index].popular.length) {%>
+              <li class="<%=(query.view==manga_filter.index)?'active':''%>">
+                <a href="/mangalist?view=<%=manga_filter.index%>"><span class="badge badge-pill badge-default pull-right"><%=manga_indices[manga_filter.index].count||0%></span> <%-manga_filter.icon||'<i class="fa fa-tags fa-fw"></i>'%> <%=manga_filter.title%></a>
+              </li>
+                <%}%>
+              <%});%>
+            </ul>
+          </div>
 
-        <div class="col-md-10 col-sm-12 col-xs-12">
-        <%if (scope == 'manga_list') {%>
-        <!-- manga_list - START -->
-        <%- include('partials/manga-list'); %>
-        <!-- manga_list - END -->
-        <%}%>
+          <div id="main-content" class="col-md-10 col-sm-12 col-xs-12">
+          <%if (scope == 'manga_list') {%>
+          <!-- manga_list - START -->
+          <%- include('partials/manga-list'); %>
+          <!-- manga_list - END -->
+          <%}%>
 
-        <%if (scope == 'manga_info') {%>
-        <!-- manga_info - START -->
-        <%- include('partials/manga-info'); %>
-        <!-- manga_info - END -->
-        <%}%>
-
+          <%if (scope == 'manga_info') {%>
+          <!-- manga_info - START -->
+          <%- include('partials/manga-info'); %>
+          <!-- manga_info - END -->
+          <%}%>
+          </div><!-- main-content -->
         </div><!-- browser-content -->
-      </div><!-- row -->
-    </div><!-- container -->
+      </div><!-- container -->
+    </div><!-- content -->
 
     <!-- Modal -->
     <div id="previewModal" class="modal fade" role="dialog">
@@ -136,6 +136,14 @@
               <a id="file-preview-image-resize-button" href="#" 
                 class="file-preview-button file-preview-big-button"
                 title="Toggle image size (s)"><i class="fa fa-arrows fa-lg fa-fw"></i></a> 
+                
+              <a id="file-preview-open-external-button" href="#" target="_blank" 
+                class="file-preview-button file-preview-big-button hidden"
+                title="Open original chapter link"><i class="fa fa-external-link fa-lg fa-fw"></i></a> 
+
+              <a id="file-preview-open-manga-viewer" href="#" target="_blank" 
+                class="file-preview-button file-preview-big-button hidden"
+                title="Open chapter in manga viewer"><i class="fa fa-eye fa-lg fa-fw"></i></a> 
             </div>
             
             <div id="file-preview-title-container">
@@ -168,39 +176,34 @@
       </div>
     </div>
 
-  </div><!-- container -->
+    <!-- Modal -->
+    <div id="deleteConfirmModal" class="modal fade" role="dialog">
+      <div class="modal-dialog">
 
-  <!-- Modal -->
-  <div id="deleteConfirmModal" class="modal fade" role="dialog">
-    <div class="modal-dialog">
+        <!-- Modal content-->
+        <div class="modal-content">
 
-      <!-- Modal content-->
-      <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 class="modal-title"></h4>
+          </div>
 
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal">&times;</button>
-          <h4 class="modal-title"></h4>
+          <div class="modal-body">
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+            <a href="#" id="delete-confirmed-button" class="btn btn-danger">Delete</a>
+          </div>
         </div>
 
-        <div class="modal-body">
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-          <a href="#" id="delete-confirmed-button" class="btn btn-danger">Delete</a>
-        </div>
       </div>
-
     </div>
-  </div>
 
-  <div id="preview-pane" class="hidden">
-  </div>
-
-  <div id="notification-pane" class="hidden text-white bg-success">
-    <span id="notification-title"></span>
-    <div id="notification-message"></div>
-  </div>
+    <div id="notification-pane" class="hidden text-white bg-success">
+      <span id="notification-title"></span>
+      <div id="notification-message"></div>
+    </div>
 
   </body>
 </html>

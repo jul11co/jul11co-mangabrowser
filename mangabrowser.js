@@ -1301,7 +1301,7 @@ var startServer = function() {
         // console.log('Chapter:', datapath);
 
         if (chapter_info.cbz_file && utils.fileExists(chapter_info.cbz_file)) {
-          // console.log('CBZ:', chapter_info.cbz_file);
+          // console.log('Chapter CBZ:', chapter_info.cbz_file);
 
           if (comic_cache[chapter_path_hash]) {
             chapter_images = comic_cache[chapter_path_hash].pages.map(function(chapter_page, idx) {
@@ -1788,7 +1788,7 @@ var loadMangaInfo = function(manga_dir, saver_file_name) {
         title_lc: chapter_info.title_lc,
         pages_count: chapter_info.pages_count,
         pages: chapter_info.pages,
-        cbz_file: chapter_info.cbz_file
+        cbz_file: getAbsPath(chapter_info.cbz_file)
       }
 
       manga_info.chapters.push(chapter_info);

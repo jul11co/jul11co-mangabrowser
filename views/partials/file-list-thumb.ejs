@@ -1,0 +1,58 @@
+
+    <div id="grid-items">
+      <%dirs.forEach(function(dir){%>
+      <div class="grid-item item-folder" data-path="<%=encodeURIComponent(dir.path)%>">
+        <div class="item-thumb-container" style="margin-bottom: 10px;">
+          <!-- <span class="vertical-helper"></span> -->
+          <a  class="item-thumb" href="/files?dir=<%=encodeURIComponent(dir.path)%>" title="<%=dir.name%>">
+            <img src="/img/folder-icon.png"/>
+          </a>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <b class="item-name"><%=dir.name%></b>
+          <p class="item-file-extra">
+            <%if (dir.subdirs_count>1){%><span><%=dir.subdirs_count%> folders</span><%}else if (dir.subdirs_count==1){%>
+            <span>1 folder</span><%}%><%if (dir.subdirs_count>0&&dir.files_count>0){%><span>,</span> <%}%>
+            <%if (dir.files_count>1){%>
+            <span><%=dir.files_count%> files</span>
+            <%}else if (dir.files_count==1){%>
+            <span>1 file</span>
+            <%}%>
+          </p>
+          <p class="item-file-extra"><%if (dir.size>0){%><span><%=bytes(dir.size)%></span><%}%></p>
+        </div>
+      </div>
+      <%})%>
+
+      <%files.forEach(function(file, idx){%>
+      <div class="grid-item item-file item-file-<%=file.type%>" 
+        data-file-name="<%=file.name%>" 
+        data-file-path="<%=encodeURIComponent(file.relpath)%>"
+        data-file-size="<%=bytes(file.size)%>"
+        data-file-type="<%=file.type%>"
+        title="<%=file.name%>">
+        <div class="item-thumb-container" style="margin-bottom: 10px;">
+          <!-- <span class="vertical-helper"></span> -->
+          <a id="<%=file.name%>" class="item-thumb" href="/files/<%=encodeURIComponent(file.name)%>?path=<%=encodeURIComponent(file.relpath)%>" title="<%=file.name%>">
+          <%if (config.thumbnails && (file.is_image||(file.is_comic&&!file.is_archive))) {%>
+            <img class="img-responsive lazyload" src="/img/file-icon.png" data-src="/thumb?path=<%=encodeURIComponent(file.relpath)%>" alt="" style="max-height: 200px;" onerror="this.onerror=null;this.src='/img/file-icon.png';">
+          <%}else if (file.type == 'zip') {%>
+            <img src="/img/zip-file-icon.png" />
+          <%}else if (file.type == 'rar') {%>
+            <img src="/img/rar-file-icon.png" />
+          <%}else{%>
+            <img src="/img/file-icon.png" />
+          <%}%>
+          </a>
+        </div>
+        <div style="margin-bottom: 10px;">
+          <b class="item-name"><%=utils.ellipsisMiddle(file.name,60)%></b>
+          <%if (query.files||query.images||query.videos||query.file_type){%>
+          <p class="item-file-extra"><a class="open-external-link" href="/files?dir=<%=encodeURIComponent(path.dirname(file.relpath))%>"><%=utils.ellipsisMiddle(path.basename(path.dirname(file.relpath)),60)%></a></p>
+          <%}%> 
+          <p class="item-file-extra"><span style="text-transform: uppercase;"><%=file.type%></span> File</p>
+          <p class="item-file-extra"><span><%=bytes(file.size)%></span></p>
+        </div>
+      </div>
+      <%})%>
+    </div>
