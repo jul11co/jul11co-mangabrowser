@@ -245,8 +245,16 @@
             <span><%=items_length%> item</span>
             <%}%>
             <%if (total_size>0){%> - <%=bytes(total_size)%><%}%> 
-            <%if (query.dir) {%><span> - <a href="/files?all=1&from_dir=<%=encodeURIComponent(query.dir)%>">Show files</a></span><span class="hidden-xs"> - <a class="open-in-external-program" href="#" data-path="<%=encodeURIComponent(query.dir)%>" title="Open in external program" data-turbolinks="false">Open location</a></span><%}%>
-            <%if (query.from_dir) {%><span> - <a href="/files?all=1&from_dir=<%=encodeURIComponent(query.from_dir)%>">Show files</a></span><span class="hidden-xs"> - <a class="open-in-external-program" href="#" data-path="<%=encodeURIComponent(query.from_dir)%>" title="Open in external program" data-turbolinks="false">Open location</a></span><%}%>
+            <%if (query.dir) {%>
+            <span> - <a href="/files?all=1&from_dir=<%=encodeURIComponent(query.dir)%>">Show files</a></span>
+            <span> - <a href="/mangalist?from_dir=<%=encodeURIComponent(query.dir)%>">Show manga</a></span></span>
+            <span class="hidden-xs"> - <a class="open-in-external-program" href="#" data-path="<%=encodeURIComponent(query.dir)%>" title="Open in external program" data-turbolinks="false">Open location</a></span>
+            <%}%>
+            <%if (query.from_dir) {%>
+            <span> - <a href="/files?all=1&from_dir=<%=encodeURIComponent(query.from_dir)%>">Show files</a></span>
+            <span> - <a href="/mangalist?from_dir=<%=encodeURIComponent(query.from_dir)%>">Show manga</a></span>
+            <span class="hidden-xs"> - <a class="open-in-external-program" href="#" data-path="<%=encodeURIComponent(query.from_dir)%>" title="Open in external program" data-turbolinks="false">Open location</a></span>
+            <%}%>
           </h5>
 
           <%var query_skip = (query.skip ? parseInt(query.skip) : 0);%>

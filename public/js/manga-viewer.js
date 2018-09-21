@@ -9,6 +9,9 @@ window.initViewer = function(opts) {
   var view_mode = opts.view_mode || 'scroll'; // 'scroll', 'single', 'double'
   var view_direction = opts.view_direction || 'right-to-left'; // 'left-to-right', 'right-to-left'
 
+  var cover_page_enable = false;
+  if (opts.cover_page) cover_page_enable = true;
+
   var first_time_load = true;
 
   var loaded_images = 0;
@@ -266,6 +269,32 @@ window.initViewer = function(opts) {
     view_direction = direction;
   }
 
+  self.enableCoverPage = function() {
+    if (!cover_page_enable) {
+      cover_page_enable = true;
+      // Re-render pages
+      if (view_mode == 'double') {
+        chapter_page_current = -1;
+        setTimeout(showSinglePageView, 100);
+        applyZoom();
+        showZoom();
+      }
+    }
+  }
+
+  self.disableCoverPage = function() {
+    if (cover_page_enable) {
+      cover_page_enable = false;
+      // Re-render pages
+      if (view_mode == 'double') {
+        chapter_page_current = -1;
+        setTimeout(showSinglePageView, 100);
+        applyZoom();
+        showZoom();
+      }
+    }
+  }
+
   // comps: {KEY: VALUE,...}
   var buildQueryComponent = function(comps) {
     var params = Object.assign({}, comps);
@@ -511,7 +540,9 @@ window.initViewer = function(opts) {
       
       chapter_pages_current = [chapter_page_current];
 
-      if (chapter_page_current > 0 && chapter_page_current < chapter_page_images.length-1) {
+      // if (chapter_page_current > 0 && chapter_page_current < chapter_page_images.length-1) {
+      if ((chapter_page_current > 0 && chapter_page_current < chapter_page_images.length-1) 
+        || (chapter_page_current == 0 && !cover_page_enable)) {
         var next_image = chapter_page_images[chapter_page_current+1];
         // console.log('Load:', next_image.src);
         console.log(next_image);

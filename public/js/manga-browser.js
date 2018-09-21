@@ -384,6 +384,8 @@ $(document).ready(function() {
       if (data && data.error) {
         console.log(data.error);
       } else if (data) {
+        $item.find('.chapter-read-status').removeClass('hidden');
+        
         var pages_count = (data.pages_count);
         var file_info_text = $('#file-preview-file-info').text();
 
@@ -559,6 +561,7 @@ $(document).ready(function() {
       if (data && data.error) {
         console.log(data.error);
       } else if (data) {
+        $item.find('.chapter-read-status').removeClass('hidden');
 
         var pages_count = (data.pages_count);
         // var file_info_text = $('#file-preview-file-info').text();

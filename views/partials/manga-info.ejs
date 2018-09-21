@@ -19,7 +19,7 @@
                 <%if (manga['cover_image']) {%>
                 <p style="text-align: center;">
                   <img class="img-responsive" 
-                    src="/image?src=<%=encodeURIComponent(manga['cover_image'])%>" style="margin: 0 auto;" 
+                    src="/manga_cover?id=<%=manga.id%>" style="margin: 0 auto;" 
                     onerror="this.onerror=null;this.src='/img/no-cover.png';" />
                 </p>
                 <%} else {%>
@@ -35,7 +35,7 @@
                   <table class="table table-condensed" style="font-size: 14px;">
                     <tr>
                       <td><b>Directory</b>:</td>
-                      <td><i class="fa fa-folder fa-fw" style="color: #5bc0de;"></i> <a href="/files?dir=<%=encodeURIComponent(manga['relpath'])%>"><%=utils.ellipsisMiddle(manga['relpath'],60)%></a></td>
+                      <td><i class="fa fa-folder fa-fw" style="color: #5bc0de;"></i> <a href="/files?dir=<%=encodeURIComponent(manga.relpath)%>"><%=utils.ellipsisMiddle(manga['relpath'],60)%></a></td>
                     </tr>
                   <%['url','mal_url','mu_url','alt_names','rank','status','language','authors','artists','categories','genres','tags','parodies','characters','chapters_count','update_enable','last_update','description'].forEach(function(prop) {%>
                     <%if (manga[prop] && Array.isArray(manga[prop])) {%>
@@ -195,7 +195,7 @@
                           <%if (chapter.cbz_size){%><span><%=bytes(chapter.cbz_size)%></span><%}%>
                         </p>
                       </td>
-                      <td style="width: 15px;"><%if (chapter.read) {%><span><i class="fa fa-eye fa-fw"></i></span><%}%></td>
+                      <td style="width: 15px;"><span class="chapter-read-status <%if (!chapter.read) {%>hidden<%}%>"><i class="fa fa-eye fa-fw"></i></span></td>
                       <td>
                         <%if(!chapter.cbz_exists){%>
                         <a href="#" class="text-danger" data-toggle="tooltip" title="Missing CBZ file"><i class="fa fa-exclamation-circle fa-fw"></i></a>
@@ -237,7 +237,7 @@
                       <td style="width: 60px;">
                         <a style="color: black;" href="/manga?path=<%=encodeURIComponent(manga_item.relpath)%>" title="<%=manga_item.name%>">
                           <%if (manga_item['cover_image']){%>
-                          <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/image?src=<%=encodeURIComponent(manga_item['cover_image'])%>" alt="" width="60px" style="max-height: 200px;" onerror="this.onerror=null;this.src='/img/no-cover.png';">
+                          <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/manga_cover?id=<%=encodeURIComponent(manga_item.relpath)%>&size=thumb" alt="" width="60px" style="max-height: 200px;" onerror="this.onerror=null;this.src='/img/no-cover.png';">
                           <%}else{%>
                           <img src="/img/no-cover.png" width="60px" />
                           <%}%>

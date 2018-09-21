@@ -178,7 +178,7 @@
                 <li class="breadcrumb-item"><a href="/mangalist?view=status" title="All Statuses">Statuses</a></li>
                 <li class="breadcrumb-item"><span class="text-capitalize"><%=utils.replaceAll(query.status,'-',' ')%></span></li>
                 <%} else if (query.language) {%>
-                <li class="breadcrumb-item"><a href="/mangalist?view=languages" title="All Languages">Languages</a></li>
+                <li class="breadcrumb-item"><a href="/mangalist?view=language" title="All Languages">Languages</a></li>
                 <li class="breadcrumb-item"><span class="text-capitalize"><%=utils.replaceAll(query.language,'-',' ')%></span></li>
                 <%} else if (query.starts_with) {%>
                 <li class="breadcrumb-item"><a href="/mangalist?view=alphabet" title="A-Z">A-Z</a></li>
@@ -366,7 +366,7 @@
                 <td class="item-manga-cover" style="text-align: center;">
                   <a href="/manga?path=<%=encodeURIComponent(manga_item.relpath)%>" title="<%=manga_item.name%>">
                     <%if (manga_item['cover_image']){%>
-                    <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/image?src=<%=encodeURIComponent(manga_item['cover_image'])%>" alt="" style="margin: 0 auto;" onerror="this.onerror=null;this.src='/img/no-cover.png';" />
+                    <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/manga_cover?id=<%=manga_item.id%>&size=thumb" alt="" style="margin: 0 auto;" onerror="this.onerror=null;this.src='/img/no-cover.png';" />
                     <%}else{%>
                     <img src="/img/no-cover.png" style="margin: 0 auto;" />
                     <%}%>
@@ -497,7 +497,7 @@
                   <td style="width: 60px;">
                     <a href="/manga?path=<%=encodeURIComponent(manga_item.relpath)%>" title="<%=manga_item.name%>">
                       <%if (manga_item['cover_image']){%>
-                      <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/image?src=<%=encodeURIComponent(manga_item['cover_image'])%>" alt="" width="60px" style="max-height: 200px;" onerror="this.onerror=null;this.src='/img/no-cover.png';">
+                      <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/manga_cover?id=<%=manga_item.id%>&size=thumb" alt="" width="60px" style="max-height: 200px;" onerror="this.onerror=null;this.src='/img/no-cover.png';">
                       <%}else{%>
                       <img src="/img/no-cover.png" width="60px" />
                       <%}%>
@@ -534,7 +534,7 @@
                 <div class="manga-cover-container" style="margin-bottom: 10px;">
                   <a href="/manga?path=<%=encodeURIComponent(manga_item.relpath)%>" title="<%=manga_item.name%>">
                     <%if (manga_item['cover_image']){%>
-                    <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/image?src=<%=encodeURIComponent(manga_item['cover_image'])%>" alt="" onerror="this.onerror=null;this.src='/img/no-cover.png';">
+                    <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/manga_cover?id=<%=manga_item.id%>&size=thumb" alt="" onerror="this.onerror=null;this.src='/img/no-cover.png';">
                     <%}else{%>
                     <img class="img-responsive" src="/img/no-cover.png" />
                     <%}%>

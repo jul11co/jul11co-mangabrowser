@@ -29,8 +29,8 @@
   var viewer_theme = view_settings['viewer-theme'] || 'dark';
   var viewer_view_mode = view_settings['viewer-view-mode'] || 'single';
   var viewer_view_direction = view_settings['viewer-view-direction'] || 'right-to-left';
-  var viewer_image_width = view_settings['viewer-image-width'] || 80;
-  var viewer_image_height = view_settings['viewer-image-height'] || 100;
+  var viewer_image_width = view_settings['viewer-image-width'] || 'auto';
+  var viewer_image_height = view_settings['viewer-image-height'] || 'auto';
   var viewer_cover_page = view_settings['viewer-cover-page'] || 'enable';
   %>
 
@@ -152,6 +152,11 @@
         <a href="#" title="Toggle view direction" data-view-direction="<%=(viewer_view_direction)%>"><%if(viewer_view_direction=='left-to-right'){%>Left to Right<%}else{%>Right to Left<%}%></a>
       </dd>
 
+      <dt>Cover page:</dt> 
+      <dd id="settings-cover-page">
+        <a href="#" title="Disable/Enable cover page in double page mode" data-cover-page="<%=(viewer_cover_page)%>"><%if(viewer_cover_page=='disable'){%>Disable<%}else{%>Enable<%}%></a>
+      </dd>
+
       <dt>Background:</dt> 
       <dd id="settings-viewer-theme">
         <a href="#" data-value="<%=(viewer_theme)%>" 
@@ -264,7 +269,8 @@
 
       var viewer = initViewer({
         view_mode: $('#settings-view-mode a').attr('data-view-mode'),
-        view_direction: $('#settings-view-direction a').attr('data-view-direction')
+        view_direction: $('#settings-view-direction a').attr('data-view-direction'),
+        cover_page: ($('#settings-cover-page a').attr('data-cover-page') == 'enable')
       });
 
       $('#settings-viewer-theme a').click(function(e) {
@@ -348,6 +354,23 @@
         }
         $.cookie("viewer-view-direction", current_view_direction);
         $(this).attr('data-view-direction', current_view_direction);
+      });
+
+      $('#settings-cover-page a').click(function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var current_cover_page = $(this).attr('data-cover-page');
+        if (current_cover_page == 'enable') {
+          current_cover_page = 'disable';
+          $(this).text('Disable');
+          viewer.disableCoverPage();
+        } else if (current_cover_page == 'disable') {
+          current_cover_page = 'enable';
+          $(this).text('Enable');
+          viewer.enableCoverPage();
+        }
+        $.cookie("viewer-cover-page", current_cover_page);
+        $(this).attr('data-cover-page', current_cover_page);
       });
 
       viewer.start();
