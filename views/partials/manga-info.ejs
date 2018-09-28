@@ -237,7 +237,7 @@
                       <td style="width: 60px;">
                         <a style="color: black;" href="/manga?path=<%=encodeURIComponent(manga_item.relpath)%>" title="<%=manga_item.name%>">
                           <%if (manga_item['cover_image']){%>
-                          <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/manga_cover?id=<%=encodeURIComponent(manga_item.relpath)%>&size=thumb" alt="" width="60px" style="max-height: 200px;" onerror="this.onerror=null;this.src='/img/no-cover.png';">
+                          <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/manga_cover?id=<%=encodeURIComponent(manga_item.id)%>&size=thumb" alt="" width="60px" style="max-height: 200px;" onerror="this.onerror=null;this.src='/img/no-cover.png';">
                           <%}else{%>
                           <img src="/img/no-cover.png" width="60px" />
                           <%}%>

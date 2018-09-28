@@ -562,7 +562,7 @@ var startServer = function() {
       files: files,
       files_length: files_length,
       // reference to manga in the same dir
-      manga: manga_map[dir_path],
+      manga: manga_map[getRelPath(getAbsPath(dir_path))],
       // global
       manga_count: manga_list.length,
       files_count: all_files.length,
@@ -581,8 +581,9 @@ var startServer = function() {
 
     var query = Object.assign({}, req.query);
 
-    var manga_relpath = query.manga ? decodeQueryPath(query.manga) : decodeQueryPath(query.path);
-    console.log('Load manga:', manga_relpath);
+    var manga_path = getAbsPath(query.manga ? decodeQueryPath(query.manga) : decodeQueryPath(query.path));
+    console.log('Load manga:', manga_path);
+    var manga_relpath = getRelPath(manga_path);
     var manga = Object.assign({}, manga_map[manga_relpath]);
 
     if (!manga_searcher) {
@@ -918,6 +919,7 @@ var startServer = function() {
 
   // GET /manga?path=...
   app.get('/manga', function(req, res) {
+    if (!req.query.path) return res.status(400).send('Missing manga path');
     return mangaInfo(req, res);
   });
 
@@ -937,15 +939,20 @@ var startServer = function() {
 
   // GET /open?path=...
   app.get('/open', function(req, res) {
+    if (!req.query.path) return res.status(400).json({error: 'Missing file path'});
+
     var fpath = getAbsPath(decodeQueryPath(req.query.path));
     open(fpath);
+
     return res.json({ok: 1});
   });
 
-  // POST /delete/path=...
+  // POST /delete?path=...
   app.post('/delete', function(req, res) {
-    var frelpath = decodeQueryPath(req.query.path);
-    var fpath = getAbsPath(frelpath);
+    if (!req.query.path) return res.status(400).json({error: 'Missing file path'});
+
+    var fpath = getAbsPath(decodeQueryPath(req.query.path));
+    var frelpath = getRelPath(fpath);
 
     console.log('Delete path:', fpath);
     if (utils.fileExists(fpath)) {
@@ -994,16 +1001,20 @@ var startServer = function() {
   });
 
   var getFile = function(req, res) {
+    if (!req.query.path) return res.status(400).send('Missing file path');
     var filepath = getAbsPath(decodeQueryPath(req.query.path));
     return res.sendFile(filepath);
   }
 
   // GET /file?path=...
   app.get('/file', getFile);
+  // GET /files/:filename?path=...
   app.get('/files/:filename', getFile);
 
   // GET /video?path=...
   app.get('/video', function(req, res) {
+    if (!req.query.path) return res.status(400).send('Missing file path');
+
     var filepath = getAbsPath(decodeQueryPath(req.query.path));
     if (!file_stat_map[filepath]) {
       file_stat_map[filepath] = fs.statSync(filepath);
@@ -1118,12 +1129,11 @@ var startServer = function() {
   app.get('/manga_chapter', function(req, res) {
     if (!req.query.path) return res.status(400).send({error: 'Missing file path'});
     
-    var chapterpath = decodeQueryPath(req.query.path);
-    var chapterpath_abs = getAbsPath(chapterpath);
+    var chapter_path = getAbsPath(decodeQueryPath(req.query.path));
+    var chapter_relpath = getRelPath(chapter_path);
 
-    // console.log('Chapter: ' + chapterpath);
-    var chapterpath_hash = utils.md5Hash(chapterpath);
-    var chapter_info = manga_chapters_map[chapterpath_hash];
+    // console.log('Chapter: ' + chapter_path);
+    var chapter_info = manga_chapters_map[utils.md5Hash(chapter_path)];
 
     if (req.query.page) {
       var page_num = parseInt(req.query.page);
@@ -1132,8 +1142,8 @@ var startServer = function() {
       if (chapter_info && chapter_info['pages'] && chapter_info['pages'].length > page_num) {
         var page_file = chapter_info['pages'][page_num].file;
 
-        if (page_file && utils.fileExists(path.join(chapterpath_abs, page_file))) {
-          return res.sendFile(path.join(chapterpath_abs, page_file));
+        if (page_file && utils.fileExists(path.join(chapter_path, page_file))) {
+          return res.sendFile(path.join(chapter_path, page_file));
         }
         
         var page_src = chapter_info['pages'][page_num].src;
@@ -1143,7 +1153,7 @@ var startServer = function() {
       }
     } else {
       if (!chapter_info) {
-        return res.status(404).send('Chapter not found: ' + chapterpath);
+        return res.status(404).send('Chapter not found: ' + chapter_path);
       }
 
       if (chapter_info.url) {
@@ -1199,7 +1209,7 @@ var startServer = function() {
     
     var manga_path = null;
     if (req.query.path) {
-      manga_path = decodeQueryPath(req.query.path);
+      manga_path = getAbsPath(decodeQueryPath(req.query.path));
     } else if (req.query.id) {
       manga_path = manga_id_map[req.query.id];
       if (!manga_path) return res.status(404).send('Manga ID not found');
@@ -1431,18 +1441,18 @@ var startServer = function() {
 
   // GET /viewer_json?path=...
   app.get('/viewer_json', function(req, res, next) {
-    var datapath = decodeQueryPath(req.query.path);
+    if (!req.query.path) return res.status(400).send({error: 'Missing path'});
+    var datapath = getAbsPath(decodeQueryPath(req.query.path));
 
     // console.log('Viewer JSON:', datapath);
 
-    var manga = manga_map[datapath];
-
+    var manga = manga_map[getRelPath(datapath)];
     if (manga) { // manga info
       return res.json({
         page: {
           url: datapath,
           manga: {
-            url: manga.relpath || datapath,
+            url: manga.path || datapath,
             name: manga.name,
             chapters: manga.chapters.map(function(chapter_info) {
               return {
@@ -1459,7 +1469,7 @@ var startServer = function() {
       var chapter_path_hash = utils.md5Hash(chapter_path);
 
       var manga_path = path.dirname(datapath);
-      var manga = manga_map[manga_path];
+      var manga = manga_map[getRelPath(manga_path)];
 
       // console.log('Manga:', manga_path);
 
@@ -1483,7 +1493,8 @@ var startServer = function() {
               page: {
                 url: datapath,
                 manga: {
-                  url: manga ? manga.relpath : manga_path,
+                  // url: manga ? manga.relpath : manga_path,
+                  url: manga ? manga.path : manga_path,
                   title: manga ? manga.name : path.basename(manga_path),
                   chapter_url: chapter_path,
                   chapter_title: chapter_info.title,
@@ -1515,7 +1526,8 @@ var startServer = function() {
               page: {
                 url: datapath,
                 manga: {
-                  url: manga ? manga.relpath : manga_path,
+                  // url: manga ? manga.relpath : manga_path,
+                  url: manga ? manga.path : manga_path,
                   title: manga ? manga.name : path.basename(manga_path),
                   chapter_url: chapter_path,
                   chapter_title: chapter_info.title,
@@ -1539,7 +1551,8 @@ var startServer = function() {
             page: {
               url: datapath,
               manga: {
-                url: manga ? manga.relpath : manga_path,
+                // url: manga ? manga.relpath : manga_path,
+                url: manga ? manga.path : manga_path,
                 title: manga ? manga.name : path.basename(manga_path),
                 chapter_url: chapter_path,
                 chapter_title: chapter_info.title,
@@ -1559,6 +1572,7 @@ var startServer = function() {
 
   var startIoServer = function(server) {
     io = require('socket.io')(server);
+
     io.on('connection', function(socket) {
       socket.on('reload-index', function(data) {
         console.log('Reload index requested!');
@@ -1578,7 +1592,7 @@ var startServer = function() {
           update_manga_queue.pushJob({
             manga_path: data.path
           }, function(args, done) {
-            var manga = manga_map[args.manga_path];
+            var manga = manga_map[getRelPath(getAbsPath(args.manga_path))];
             if (!manga) {
               return done(new Error('Non-existing manga'));
             }
@@ -1840,6 +1854,19 @@ var loadMangaInfoFromFile = function(manga_info_file) {
     }
   }
 
+  if (!manga_info['alt_names']) {
+    manga_info['alt_names'] = [];
+    if (manga_info['original_name'] && manga_info['original_name'] != manga_info['name']) {
+      manga_info['alt_names'].push(manga_info['original_name']);
+    }
+    if (manga_info['japanese_name'] && manga_info['alt_names'].indexOf(manga_info['japanese_name']) == -1) {
+      manga_info['alt_names'].push(manga_info['japanese_name']);
+    }
+    if (manga_info['english_name'] && manga_info['alt_names'].indexOf(manga_info['english_name']) == -1) {
+      manga_info['alt_names'].push(manga_info['english_name']);
+    }
+  }
+
   // refine values
   manga_hyphen_fields.forEach(function(field) {
     if (manga_info[field] && Array.isArray(manga_info[field])) {
@@ -1949,8 +1976,7 @@ var loadMangaInfo = function(manga_dir, saver_file_name) {
         chapter_info.pages = entry_info.chapter_images.slice();
       }
 
-      var chapter_hash = utils.md5Hash(chapter_info.output_dir);
-
+      var chapter_hash = utils.md5Hash(getAbsPath(chapter_info.output_dir));
       manga_chapters_map[chapter_hash] = {
         output_dir: chapter_info.output_dir,
         url: chapter_info.url,
@@ -2073,7 +2099,10 @@ var resetIndex = function() {
   manga_id_map = {};
   manga_chapters_map = {};
 
-  manga_list_cache = {};
+  // manga_list_cache = {};
+  Object.keys(manga_list_cache).forEach(function(cache_key) {
+    delete manga_list_cache[cache_key];
+  });
 
   manga_searcher = false;
   manga_search_list = [];
