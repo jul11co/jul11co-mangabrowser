@@ -1196,7 +1196,9 @@ var startServer = function() {
         return callback(err);
       }
 
-      fse.copySync(cached_filepath, cover_filepath, { overwrite: true, preserveTimestamps: true });
+      if (utils.fileExists(cached_filepath)) {
+        fse.copySync(cached_filepath, cover_filepath, { overwrite: true, preserveTimestamps: true });
+      }
 
       callback(null, cover_filepath);
     });
@@ -1371,7 +1373,8 @@ var startServer = function() {
     }
 
     var download_opts = {
-      no_rename: true
+      no_rename: true,
+      retry_incomplete_download: true
     };
 
     if (opts.request_headers) {

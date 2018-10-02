@@ -71,7 +71,7 @@
         <%if (manga_starts_with_list.length) {%>
         <div id="view-alphabet" class="hidden-xs <%=(query.starts_with||query.view=='alphabet')?'':'hidden'%>">
           <div class="panel panel-default">
-            <div class="panel-heading">A-Z</div>
+            <div class="panel-heading"><i class="fa fa-sort-alpha-asc fa-fw"></i> Starts with</div>
             <div class="panel-body" style="font-size: 16px;">
           <%manga_starts_with_list.forEach(function(first_letter){%>
             <a class="btn <%if (query['starts_with']==first_letter.name){%>btn-primary<%}else{%>btn-default<%}%> btn-sm filter-tag" href="/mangalist?starts_with=<%=first_letter.name%>"><%=first_letter.name%></a> 
