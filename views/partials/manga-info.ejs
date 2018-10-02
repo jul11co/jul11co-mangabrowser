@@ -30,88 +30,89 @@
               </div>
 
               <div class="col-md-8 col-sm-12 col-xs-12">
-                <h3><%=manga['name']%></h3>
-                <div class="table-responsive">
-                  <table class="table table-condensed" style="font-size: 14px;">
-                    <tr>
-                      <td><b>Directory</b>:</td>
-                      <td><i class="fa fa-folder fa-fw" style="color: #5bc0de;"></i> <a href="/files?dir=<%=encodeURIComponent(manga.relpath)%>"><%=utils.ellipsisMiddle(manga['relpath'],60)%></a></td>
-                    </tr>
+                <h3 class="manga-title" style="margin-top: 0;"><%=manga['name']%></h3>
+
+                <div class="manga-info">
+                  <div class="row border-top padding-y-1">
+                    <div class="col-lg-2 col-md-3 col-sm-3 col-xs-12"><b>Directory</b>:</div>
+                    <div class="col-lg-10 col-md-9 col-sm-9 col-xs-12"><i class="fa fa-folder fa-fw" style="color: #5bc0de;"></i> <a href="/files?dir=<%=encodeURIComponent(manga.relpath)%>"><%=utils.ellipsisMiddle(manga['relpath'],60)%></a></div>
+                  </div>
                   <%['url','mal_url','mu_url','alt_names','rank','status','language','authors','artists','categories','genres','tags','parodies','characters','chapters_count','update_enable','last_update','description'].forEach(function(prop) {%>
-                    <%if (manga[prop] && Array.isArray(manga[prop])) {%>
-                    <tr>
-                      <td><b style="text-transform: capitalize;"><%=utils.replaceAll(prop,'_',' ')%>:</b></td>
-                      <td>
-                      <%if (prop=='alt_names') {%>
-                        <ul style="padding-left: 15px;"><%manga[prop].forEach(function(item){%><li><%=item%></li> <%})%></ul>
-                      <%} else if (manga_field_filter_map[prop]) {%>
-                        <%manga[prop].forEach(function(item){%>
-                        <a class="btn btn-default btn-xs text-capitalize" href="/mangalist?<%=manga_field_filter_map[prop].param%>=<%=encodeURIComponent(item)%>"><%=(manga_field_filter_map[prop].hyphen)?utils.replaceAll(item,'-',' '):item%></a> 
-                        <%});%>
-                        <%if(prop == 'genres'){%>
-                        <%var genres_list = manga[prop].join(' ');%>
-                        <a class="btn btn-info btn-xs" href="/mangalist?genre=<%=genres_list%>" title="Search manga with same genres"><i class="fa fa-search fa-fw"></i> Similar</a> 
-                        <%}else if(prop == 'tags'){%>
-                        <%var tags_list = manga[prop].join(' ');%>
-                        <a class="btn btn-info btn-xs" href="/mangalist?tag=<%=tags_list%>" title="Search manga with same tags"><i class="fa fa-search fa-fw"></i> Similar</a> 
-                        <%}%>
-                      <%} else {%>
-                        <%manga[prop].forEach(function(item){%>
-                        <span class="text-capitalize"><%=item%>;</span>
-                        <%});%>
+                  <%if (manga[prop] && Array.isArray(manga[prop])) {%>
+                  <div class="row border-top padding-y-1">
+                    <div class="col-lg-2 col-md-3 col-sm-3 col-xs-12"><b style="text-transform: capitalize;"><%=utils.replaceAll(prop,'_',' ')%>:</b></div>
+                    <div class="col-lg-10 col-md-9 col-sm-9 col-xs-12">
+                    <%if (prop=='alt_names') {%>
+                      <ul style="padding-left: 15px;"><%manga[prop].forEach(function(item){%><li><%=item%></li> <%})%></ul>
+                    <%} else if (manga_field_filter_map[prop]) {%>
+                      <%manga[prop].forEach(function(item){%>
+                      <a class="btn btn-default btn-xs text-capitalize" href="/mangalist?<%=manga_field_filter_map[prop].param%>=<%=encodeURIComponent(item)%>"><%=(manga_field_filter_map[prop].hyphen)?utils.replaceAll(item,'-',' '):item%></a> 
+                      <%});%>
+                      <%if(prop == 'genres'){%>
+                      <%var genres_list = manga[prop].join(' ');%>
+                      <a class="btn btn-info btn-xs" href="/mangalist?genre=<%=genres_list%>" title="Search manga with same genres"><i class="fa fa-search fa-fw"></i> Similar</a> 
+                      <%}else if(prop == 'tags'){%>
+                      <%var tags_list = manga[prop].join(' ');%>
+                      <a class="btn btn-info btn-xs" href="/mangalist?tag=<%=tags_list%>" title="Search manga with same tags"><i class="fa fa-search fa-fw"></i> Similar</a> 
                       <%}%>
-                      </td>
-                    </tr>
-                    <%} else if (typeof manga[prop] != 'undefined') {%>
-                    <tr>
-                      <td>
-                        <%if (prop=='mal_url') {%>
-                        <b>MyAnimeList:</b>
-                        <%} else if (prop=='mu_url') {%>
-                        <b>MangaUpdates:</b>
-                        <%} else if (prop=='url') {%>
-                        <b>URL:</b>
-                        <%} else if (prop=='chapters_count') {%>
-                        <b>Chapters:</b>
-                        <%} else if (prop=='update_enable') {%>
-                        <b>Update:</b>
-                        <%} else {%>
-                        <b style="text-transform: capitalize;"><%=utils.replaceAll(prop,'_',' ')%>:</b>
-                        <%}%>
-                      </td>
-                      <td>
-                      <%if (prop=='url') {%>
-                        <i class="fa fa-book fa-fw"></i> <a target="_blank" href="<%=manga[prop]%>"><%=manga[prop]%> <i class="fa fa-external-link fa-fw"></i></a>
-                      <%} else if (prop=='mal_url') {%>
-                        <img src="/img/mal.png"> <a href="<%=manga[prop]%>" target="_blank"><%=manga[prop]%> <i class="fa fa-external-link fa-fw"></i></a>
-                      <%} else if (prop=='mu_url') {%>
-                        <img src="/img/mu.png"> <a href="<%=manga[prop]%>" target="_blank"><%=manga[prop]%> <i class="fa fa-external-link fa-fw"></i></a>
-                      <%} else if (manga_field_filter_map[prop]) {%>
-                        <a class="btn btn-default btn-xs text-capitalize" href="/mangalist?<%=manga_field_filter_map[prop].param%>=<%=manga[prop]%>"><%=(manga_field_filter_map[prop].hyphen)?utils.replaceAll(manga[prop],'-',' '):manga[prop]%></a>
-                      <%} else if (prop=='update_enable') {%>
-                        <%if (manga[prop]) {%>
-                        <a class="btn btn-success btn-xs text-capitalize disable-manga-update" href="#" data-manga-path="<%=manga.relpath%>" title="Auto update: Enabled">Enabled</a>
-                        <a class="btn btn-default btn-xs text-capitalize update-manga" href="#" data-manga-path="<%=manga.relpath%>" title="Click to update this manga"><i class="fa fa-refresh fa-fw"></i> Update</a>
-                        <%} else {%>
-                        <a class="btn btn-danger btn-xs text-capitalize enable-manga-update" href="#" data-manga-path="<%=manga.relpath%>" title="Auto update: Disabled">Disabled</a>
-                        <%}%>
-                      <%} else if (prop == 'last_chapter_update') {%>
-                        <span><%=moment(manga[prop]).format('MMM DD, YYYY hh:mm A')%></span> <span>(<%=moment(manga[prop]).fromNow()%>)</span>
-                      <%} else if (prop == 'last_update') {%>
-                        <span><%=moment(manga[prop]).format('MMM DD, YYYY hh:mm A')%></span> <span>(<%=moment(manga[prop]).fromNow()%>)</span>
-                      <%} else if (prop == 'added_at') {%>
-                        <span><%=moment(manga[prop]).format('MMM DD, YYYY hh:mm A')%></span> <span>(<%=moment(manga[prop]).fromNow()%>)</span>
-                      <%} else {%>
-                        <span><%=manga[prop]%></span>
-                      <%}%>
-                      </td>
-                    </tr>
+                    <%} else {%>
+                      <%manga[prop].forEach(function(item){%>
+                      <span class="text-capitalize"><%=item%>;</span>
+                      <%});%>
                     <%}%>
+                    </div>
+                  </div>
+                  <%} else if (typeof manga[prop] != 'undefined') {%>
+                  <div class="row border-top padding-y-1">
+                    <div class="col-lg-2 col-md-3 col-sm-3 col-xs-12">
+                      <%if (prop=='mal_url') {%>
+                      <b>MyAnimeList:</b>
+                      <%} else if (prop=='mu_url') {%>
+                      <b>MangaUpdates:</b>
+                      <%} else if (prop=='url') {%>
+                      <b>URL:</b>
+                      <%} else if (prop=='chapters_count') {%>
+                      <b>Chapters:</b>
+                      <%} else if (prop=='update_enable') {%>
+                      <b>Update:</b>
+                      <%} else {%>
+                      <b style="text-transform: capitalize;"><%=utils.replaceAll(prop,'_',' ')%>:</b>
+                      <%}%>
+                    </div>
+                    <div class="col-lg-10 col-md-9 col-sm-9 col-xs-12">
+                    <%if (prop=='url') {%>
+                      <i class="fa fa-book fa-fw"></i> <a target="_blank" href="<%=manga[prop]%>"><%=manga[prop]%> <i class="fa fa-external-link fa-fw"></i></a>
+                    <%} else if (prop=='mal_url') {%>
+                      <img src="/img/mal.png"> <a href="<%=manga[prop]%>" target="_blank"><%=manga[prop]%> <i class="fa fa-external-link fa-fw"></i></a>
+                    <%} else if (prop=='mu_url') {%>
+                      <img src="/img/mu.png"> <a href="<%=manga[prop]%>" target="_blank"><%=manga[prop]%> <i class="fa fa-external-link fa-fw"></i></a>
+                    <%} else if (manga_field_filter_map[prop]) {%>
+                      <a class="btn btn-default btn-xs text-capitalize" href="/mangalist?<%=manga_field_filter_map[prop].param%>=<%=manga[prop]%>"><%=(manga_field_filter_map[prop].hyphen)?utils.replaceAll(manga[prop],'-',' '):manga[prop]%></a>
+                    <%} else if (prop=='update_enable') {%>
+                      <%if (manga[prop]) {%>
+                      <a class="btn btn-success btn-xs text-capitalize disable-manga-update" href="#" data-manga-path="<%=manga.relpath%>" title="Auto update: Enabled">Enabled</a>
+                      <a class="btn btn-default btn-xs text-capitalize update-manga" href="#" data-manga-path="<%=manga.relpath%>" title="Click to update this manga"><i class="fa fa-refresh fa-fw"></i> Update</a>
+                      <%} else {%>
+                      <a class="btn btn-danger btn-xs text-capitalize enable-manga-update" href="#" data-manga-path="<%=manga.relpath%>" title="Auto update: Disabled">Disabled</a>
+                      <%}%>
+                    <%} else if (prop == 'last_chapter_update') {%>
+                      <span><%=moment(manga[prop]).format('MMM DD, YYYY hh:mm A')%></span> <span>(<%=moment(manga[prop]).fromNow()%>)</span>
+                    <%} else if (prop == 'last_update') {%>
+                      <span><%=moment(manga[prop]).format('MMM DD, YYYY hh:mm A')%></span> <span>(<%=moment(manga[prop]).fromNow()%>)</span>
+                    <%} else if (prop == 'added_at') {%>
+                      <span><%=moment(manga[prop]).format('MMM DD, YYYY hh:mm A')%></span> <span>(<%=moment(manga[prop]).fromNow()%>)</span>
+                    <%} else {%>
+                      <span><%=manga[prop]%></span>
+                    <%}%>
+                    </div>
+                  </div>
+                  <%}%>
                   <%});%>
-                  </table>
                 </div>
               </div>
             </div><!-- row -->
+
+            <hr />
 
             <ul class="nav nav-tabs" style="margin-bottom: 10px;">
               <%if (manga.chapters) {%>

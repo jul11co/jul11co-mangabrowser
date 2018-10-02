@@ -11,6 +11,13 @@ body {
 ol.breadcrumb {
   margin-bottom: 0;
 }
+.border-top {
+  border-top: 1px solid #dee2e6;
+}
+.padding-y-1 {
+  padding-bottom: 0.25rem !important;
+  padding-top: 0.25rem !important;
+}
 .table-borderless > tbody > tr > td {
   border: none;
 }
