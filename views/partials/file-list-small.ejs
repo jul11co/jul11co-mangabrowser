@@ -109,6 +109,10 @@
                 <a style="color: grey;" class="open-external-link" href="/files/<%=encodeURIComponent(file.name)%>?path=<%=encodeURIComponent(file.relpath)%>" target="_blank" title="Open file in new tab">
                 <%if (config.thumbnails && (file.is_image||(file.is_comic&&!file.is_archive))) {%>
                   <img class="img-responsive lazyload" src="/img/file-icon.png" data-src="/thumb?path=<%=encodeURIComponent(file.relpath)%>" alt="" width="60px" style="max-height: 200px;" onerror="this.onerror=null;this.src='/img/file-icon.png';">
+                <%}else if (config.zip_thumbnails && file.type == 'zip') {%>
+                  <img class="img-responsive lazyload" src="/img/zip-file-icon.png" data-src="/thumb?path=<%=encodeURIComponent(file.relpath)%>" alt="" width="60px" style="max-height: 200px;" onerror="this.onerror=null;this.src='/img/zip-file-icon.png';">
+                <%}else if (config.rar_thumbnails && file.type == 'rar') {%>
+                  <img class="img-responsive lazyload" src="/img/rar-file-icon.png" data-src="/thumb?path=<%=encodeURIComponent(file.relpath)%>" alt="" width="60px" style="max-height: 200px;" onerror="this.onerror=null;this.src='/img/rar-file-icon.png';">
                 <%}else if (file.type == 'zip') {%>
                   <img src="/img/zip-file-icon.png" width="60px" />
                   <%}else if (file.type == 'rar') {%>

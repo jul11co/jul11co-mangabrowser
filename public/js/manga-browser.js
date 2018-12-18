@@ -1,5 +1,12 @@
 $(document).ready(function() {
 
+  $(window).resize(function () {
+    $('#sidebar-list').width($('#sidebar').width());
+  });
+
+  $('#sidebar-list').width($('#sidebar').width());
+  $('#sidebar-list .badge.pull-right').removeClass('hidden');
+
   var showNotification = function(title, message, timeout) {
     if ($('#notification-pane').hasClass('hidden')) {
       $('#notification-pane').removeClass('hidden');
@@ -154,16 +161,9 @@ $(document).ready(function() {
     }
   });
 
-  $('#show-alphabet').on('click', function(event) {
-    event.preventDefault();
-    $('#view-alphabet').removeClass('hidden');
-  });
-  $('#show-search').on('click', function(event) {
-    event.preventDefault();
-    $('#view-search').removeClass('hidden');
-  });
-
   ///
+
+  $('[data-toggle="tooltip"]').tooltip();
 
   $('.item-menu-dropdown').on('click', function(event) {
     event.stopPropagation();
@@ -371,10 +371,11 @@ $(document).ready(function() {
     if ($item.attr('data-chapter-url')) {
       $('#file-preview-open-external-button').removeClass('hidden');
       $('#file-preview-open-external-button').attr('href', $item.attr('data-chapter-url'));
-
+    }
+    if ($item.attr('data-viewer-path')) {
       $('#file-preview-open-manga-viewer').removeClass('hidden');
       $('#file-preview-open-manga-viewer').attr('href', '/viewer?path=' + 
-        encodeURIComponent($item.attr('data-file-path').replace('.cbz',''))
+        encodeURIComponent($item.attr('data-viewer-path'))
       );
     }
 
@@ -385,7 +386,7 @@ $(document).ready(function() {
         console.log(data.error);
       } else if (data) {
         $item.find('.chapter-read-status').removeClass('hidden');
-        
+
         var pages_count = (data.pages_count);
         var file_info_text = $('#file-preview-file-info').text();
 
@@ -546,10 +547,11 @@ $(document).ready(function() {
     if ($item.attr('data-chapter-url')) {
       $('#file-preview-open-external-button').removeClass('hidden');
       $('#file-preview-open-external-button').attr('href', $item.attr('data-chapter-url'));
-      
+    }
+    if ($item.attr('data-viewer-path')) {
       $('#file-preview-open-manga-viewer').removeClass('hidden');
       $('#file-preview-open-manga-viewer').attr('href', '/viewer?path=' + 
-        encodeURIComponent($item.attr('data-file-path').replace('.cbz',''))
+        encodeURIComponent($item.attr('data-viewer-path'))
       );
     }
 

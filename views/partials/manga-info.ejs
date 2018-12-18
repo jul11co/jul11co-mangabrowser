@@ -1,3 +1,32 @@
+    <%
+      var language_to_flag_map = {
+        'arabic': '/img/flags/sa.png',
+        'العربية': '/img/flags/sa.png',
+        'chinese': '/img/flags/cn.png',
+        '中文': '/img/flags/cn.png',
+        'deutsch': '/img/flags/de.png',
+        'english': '/img/flags/gb.png',
+        'español': '/img/flags/es.png',
+        'french': '/img/flags/fr.png',
+        'français': '/img/flags/fr.png',
+        'italiano': '/img/flags/it.png',
+        'japanese': '/img/flags/jp.png',
+        '日本語': '/img/flags/jp.png',
+        'korean': '/img/flags/kr.png',
+        '한국어': '/img/flags/kr.png',
+        'russian': '/img/flags/ru.png',
+        'русский': '/img/flags/ru.png',
+        'portuguese': '/img/flags/pt.png',
+        'português': '/img/flags/pt.png',
+        'Thai': '/img/flags/th.png',
+        'ไทย': '/img/flags/th.png',
+        'vietnamese': '/img/flags/vn.png',
+        'tiếng việt': '/img/flags/vn.png',
+        'tiếng-việt': '/img/flags/vn.png',
+        'rewrite': '/img/flags/gb.png'
+      };
+    %>
+
     <div class="row">
 
       <div class="col-md-12">
@@ -15,7 +44,7 @@
           </div>
           <div class="panel-body">
             <div class="row">
-              <div class="col-md-4 col-sm-12 col-xs-12">
+              <div class="col-md-4 col-sm-5 col-xs-12">
                 <%if (manga['cover_image']) {%>
                 <p style="text-align: center;">
                   <img class="img-responsive" 
@@ -29,19 +58,19 @@
                 <%}%>
               </div>
 
-              <div class="col-md-8 col-sm-12 col-xs-12">
+              <div class="col-md-8 col-sm-7 col-xs-12">
                 <h3 class="manga-title" style="margin-top: 0;"><%=manga['name']%></h3>
 
                 <div class="manga-info">
                   <div class="row border-top padding-y-1">
-                    <div class="col-lg-2 col-md-3 col-sm-3 col-xs-12"><b>Directory</b>:</div>
-                    <div class="col-lg-10 col-md-9 col-sm-9 col-xs-12"><i class="fa fa-folder fa-fw" style="color: #5bc0de;"></i> <a href="/files?dir=<%=encodeURIComponent(manga.relpath)%>"><%=utils.ellipsisMiddle(manga['relpath'],60)%></a></div>
+                    <div class="col-lg-2 col-md-3 col-sm-12 col-xs-12"><b>Directory</b>:</div>
+                    <div class="col-lg-10 col-md-9 col-sm-12 col-xs-12"><i class="fa fa-folder fa-fw" style="color: #5bc0de;"></i> <a href="/files?dir=<%=encodeURIComponent(manga.relpath)%>"><%=utils.ellipsisMiddle(manga['relpath'],60)%></a></div>
                   </div>
                   <%['url','mal_url','mu_url','alt_names','rank','status','language','authors','artists','categories','genres','tags','parodies','characters','chapters_count','update_enable','last_update','description'].forEach(function(prop) {%>
                   <%if (manga[prop] && Array.isArray(manga[prop])) {%>
                   <div class="row border-top padding-y-1">
-                    <div class="col-lg-2 col-md-3 col-sm-3 col-xs-12"><b style="text-transform: capitalize;"><%=utils.replaceAll(prop,'_',' ')%>:</b></div>
-                    <div class="col-lg-10 col-md-9 col-sm-9 col-xs-12">
+                    <div class="col-lg-2 col-md-3 col-sm-12 col-xs-12"><b style="text-transform: capitalize;"><%=utils.replaceAll(prop,'_',' ')%>:</b></div>
+                    <div class="col-lg-10 col-md-9 col-sm-12 col-xs-12">
                     <%if (prop=='alt_names') {%>
                       <ul style="padding-left: 15px;"><%manga[prop].forEach(function(item){%><li><%=item%></li> <%})%></ul>
                     <%} else if (manga_field_filter_map[prop]) {%>
@@ -64,7 +93,7 @@
                   </div>
                   <%} else if (typeof manga[prop] != 'undefined') {%>
                   <div class="row border-top padding-y-1">
-                    <div class="col-lg-2 col-md-3 col-sm-3 col-xs-12">
+                    <div class="col-lg-2 col-md-3 col-sm-12 col-xs-12">
                       <%if (prop=='mal_url') {%>
                       <b>MyAnimeList:</b>
                       <%} else if (prop=='mu_url') {%>
@@ -79,7 +108,7 @@
                       <b style="text-transform: capitalize;"><%=utils.replaceAll(prop,'_',' ')%>:</b>
                       <%}%>
                     </div>
-                    <div class="col-lg-10 col-md-9 col-sm-9 col-xs-12">
+                    <div class="col-lg-10 col-md-9 col-sm-12 col-xs-12">
                     <%if (prop=='url') {%>
                       <i class="fa fa-book fa-fw"></i> <a target="_blank" href="<%=manga[prop]%>"><%=manga[prop]%> <i class="fa fa-external-link fa-fw"></i></a>
                     <%} else if (prop=='mal_url') {%>
@@ -87,7 +116,7 @@
                     <%} else if (prop=='mu_url') {%>
                       <img src="/img/mu.png"> <a href="<%=manga[prop]%>" target="_blank"><%=manga[prop]%> <i class="fa fa-external-link fa-fw"></i></a>
                     <%} else if (manga_field_filter_map[prop]) {%>
-                      <a class="btn btn-default btn-xs text-capitalize" href="/mangalist?<%=manga_field_filter_map[prop].param%>=<%=manga[prop]%>"><%=(manga_field_filter_map[prop].hyphen)?utils.replaceAll(manga[prop],'-',' '):manga[prop]%></a>
+                      <a class="btn btn-default btn-xs text-capitalize" href="/mangalist?<%=manga_field_filter_map[prop].param%>=<%=manga[prop]%>"><%if (prop=='language') {%><img src="<%=language_to_flag_map[manga.language.toLowerCase()]%>" /> <%}%><%=(manga_field_filter_map[prop].hyphen)?utils.replaceAll(manga[prop],'-',' '):manga[prop]%></a>
                     <%} else if (prop=='update_enable') {%>
                       <%if (manga[prop]) {%>
                       <a class="btn btn-success btn-xs text-capitalize disable-manga-update" href="#" data-manga-path="<%=manga.relpath%>" title="Auto update: Enabled">Enabled</a>
@@ -129,7 +158,7 @@
                 <table id="chapter-items" class="table table-hover table-responsive items" style="font-size: 14px;max-width: 100%;">
                   <thead class="hidden-sm hidden-xs">
                     <th style="width: 60px;"></th>
-                    <th>
+                    <th style="text-align: left;">
                       <%if (!query.chapter_sort||query.chapter_sort=='name'){%>
                       <%if(query.chapter_order=='desc'){%>
                       <a href="/manga?path=<%=encodeURIComponent(manga.relpath)%>&chapter_sort=name&chapter_order=asc">Name</a>
@@ -144,8 +173,8 @@
                     </th>
                     <th style="width: 15px;"></th>
                     <th></th>
-                    <th class="hidden-sm hidden-xs">Size</th>
-                    <th class="hidden-sm hidden-xs">
+                    <th class="hidden-sm hidden-xs" style="text-align: right;">Size</th>
+                    <th class="hidden-sm hidden-xs" style="text-align: left;">
                       <%if (query.chapter_sort=='last_update'){%>
                       <%if(query.chapter_order=='asc'){%>
                       <a href="/manga?path=<%=encodeURIComponent(manga.relpath)%>&chapter_sort=last_update&chapter_order=desc">Last Update</a>
@@ -161,12 +190,13 @@
                   </thead>
                   <tbody>
                   <%manga.chapters.forEach(function(chapter, idx){%>
-                    <tr class="item-file item-manga-chapter-<%=chapter.type%>" 
+                    <tr class="item-file item-manga-chapter-<%=(chapter.type=='cbz'&&chapter.cbz_exists)?'cbz':'remote'%>" 
                       data-file-type="<%=chapter.type%>"
                       data-file-size="<%=bytes(chapter.cbz_size||0)%>"
                       data-file-path="<%=(chapter.cbz_exists)?chapter.cbz_file:(chapter.output_dir||'')%>"
                       data-file-name="<%=chapter.title%>" 
                       data-chapter-url="<%=chapter.url%>"
+                      data-viewer-path="<%=chapter.output_dir%>"
                       title="<%=chapter.title%>">
                       <td style="width: 60px;">
                         <a class="open-external-link" <%if(!chapter.cbz_exists){%>href="#"<%}else{%>href="/files/<%=path.basename(chapter.cbz_file)%>?path=<%=encodeURIComponent(chapter.cbz_file)%>" target="_blank title="Open file in new tab"<%}%>>
@@ -178,11 +208,13 @@
                           <%}%>
                         </a>
                       </td>
-                      <td style="max-width: 500px;overflow: hidden;text-overflow: ellipsis;">
+                      <td style="max-width: 500px;overflow: hidden;text-overflow: ellipsis;text-align: left;">
                         <span><%=chapter.title%></span> 
+                        <%if (chapter.url){%>
                         <p class="item-file-extra">
                           <a class="open-external-link" target="_blank" href="<%=chapter.url%>"><%=chapter.url%> <i class="fa fa-external-link fa-fw"></i></a>
                         </p>
+                        <%}%>
                         <p class="item-file-extra">
                           <%if (chapter.pages_count>1){%><span><%=chapter.pages_count%> pages</span><%}else if (chapter.pages_count==1){%>
                           <span>1 page</span><%}%>
@@ -196,7 +228,9 @@
                           <%if (chapter.cbz_size){%><span><%=bytes(chapter.cbz_size)%></span><%}%>
                         </p>
                       </td>
-                      <td style="width: 15px;"><span class="chapter-read-status <%if (!chapter.read) {%>hidden<%}%>"><i class="fa fa-eye fa-fw"></i></span></td>
+                      <td style="width: 15px;">
+                        <span class="chapter-read-status <%if (!chapter.read) {%>hidden<%}%>"><i class="fa fa-eye fa-fw"></i></span>
+                      </td>
                       <td>
                         <%if(!chapter.cbz_exists){%>
                         <a href="#" class="text-danger" data-toggle="tooltip" title="Missing CBZ file"><i class="fa fa-exclamation-circle fa-fw"></i></a>
@@ -211,8 +245,12 @@
                           </ul>
                         </div>
                       </td>
-                      <td class="hidden-sm hidden-xs" style="color: grey;"><%if(chapter.cbz_exists && chapter.cbz_size){%><%=bytes(chapter.cbz_size)%><%}%></td>
-                      <td class="hidden-sm hidden-xs" style="color: grey;"><%if(chapter.cbz_mtime){%><%=moment(chapter.cbz_mtime).format('MMM DD, YYYY hh:mm A')%><%} else if (chapter.last_update){%><%=moment(chapter.last_update).format('MMM DD, YYYY hh:mm A')%><%}%></td>
+                      <td class="hidden-sm hidden-xs" style="color: grey;text-align: right;">
+                        <%if(chapter.cbz_exists && chapter.cbz_size){%><span><%=bytes(chapter.cbz_size)%></span><%}%>
+                      </td>
+                      <td class="hidden-sm hidden-xs" style="color: grey;text-align: left;">
+                        <%if(chapter.cbz_mtime){%><span><%=moment(chapter.cbz_mtime).format('MMM DD, YYYY hh:mm A')%></span><%} else if (chapter.last_update){%><span><%=moment(chapter.last_update).format('MMM DD, YYYY hh:mm A')%></span><%}%>
+                      </td>
                     </tr>
                   <%})%>
                   </tbody>
@@ -255,7 +293,11 @@
                         </p>
                         <p class="item-file-extra hidden-lg hidden-md"><%if (manga_item.last_chapter_update){%><span style="margin-right: 15px;"><%=moment(manga_item.last_chapter_update).format('MMM DD, YYYY hh:mm A')%></span><%} else if (manga_item.last_update){%><span style="margin-right: 15px;"><%=moment(manga_item.last_update).format('MMM DD, YYYY hh:mm A')%></span><%}%></p>
                       </td>
-                      <td class="hidden-sm hidden-xs" style="color: grey;"></td>
+                      <td class="hidden-sm hidden-xs" style="color: grey;">
+                        <%if (manga_item.language) {%>
+                        <img src="<%=language_to_flag_map[manga_item.language.toLowerCase()]%>" title="<%=manga_item.language%>" />
+                        <%}%>
+                      </td>
                       <td class="hidden-sm hidden-xs" style="color: grey;">
                         <%if (manga_item.chapters_count>0){%><span><%=manga_item.chapters_count%></span><%}%>
                       </td>

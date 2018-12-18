@@ -1,3 +1,6 @@
+body {
+  background-color: #f0f0f0;
+}
 .breadcrumb {
   margin-bottom: 0;
 }
@@ -130,7 +133,20 @@ table.items tr.item-manga {
 #file-preview-close a {
   text-decoration: none;
 }
-#file-preview-close-button {
+#file-preview-actions {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  vertical-align: top;
+  max-width: 60px;
+}
+#file-preview-actions .file-preview-big-button {
+  margin-top: 10px;
+  position: relative;
+  display: inline-block;
+  text-decoration: none;
+}
+/*#file-preview-close-button {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -138,10 +154,10 @@ table.items tr.item-manga {
 }
 #file-preview-image-resize-button {
   position: absolute;
-  top: 60px;
+  top: 50px;
   right: 10px;
   text-decoration: none;
-}
+}*/
 #file-preview-title-container {
   position: absolute;
   text-align: center;
@@ -281,7 +297,7 @@ table.items tr.item-manga {
   vertical-align: middle;
 }
 .grid-item {
-  width: calc(20% - 10px);
+  /*width: calc(20% - 10px);*/
   /*width: calc(20% - 0px);*/
   width: calc(16.67% - 10px);
   display: inline-block;
@@ -296,7 +312,7 @@ table.items tr.item-manga {
   .grid-item {
     width: calc(25% - 10px);
     /*width: calc(25% - 0px);*/
-    width: calc(20% - 10px);
+    /*width: calc(20% - 10px);*/
   }
 }
 @media (max-width: 768px) {

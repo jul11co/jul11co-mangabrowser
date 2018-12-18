@@ -448,8 +448,9 @@ $(document).ready(function() {
   var previewNextItem = function() {
     var $item = getNextPreviewItem();
     if ($item) {
-      $('table#items tbody tr').removeClass('info');
-      $item.addClass('info');
+      // $('table#items tbody tr').removeClass('info');
+      // $item.addClass('info');
+      setItemActive($item);
       previewItem($item);
     }
   }
@@ -457,8 +458,9 @@ $(document).ready(function() {
   var previewPrevItem = function() {
     var $item = getPrevPreviewItem();
     if ($item) {
-      $('table#items tbody tr').removeClass('info');
-      $item.addClass('info');
+      // $('table#items tbody tr').removeClass('info');
+      // $item.addClass('info');
+      setItemActive($item);
       previewItem($item);
     }
   }

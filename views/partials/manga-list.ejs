@@ -1,33 +1,195 @@
+      <%
+      var language_to_flag_map = {
+        'arabic': '/img/flags/sa.png',
+        'العربية': '/img/flags/sa.png',
+        'chinese': '/img/flags/cn.png',
+        '中文': '/img/flags/cn.png',
+        'deutsch': '/img/flags/de.png',
+        'english': '/img/flags/gb.png',
+        'español': '/img/flags/es.png',
+        'french': '/img/flags/fr.png',
+        'français': '/img/flags/fr.png',
+        'italiano': '/img/flags/it.png',
+        'japanese': '/img/flags/jp.png',
+        '日本語': '/img/flags/jp.png',
+        'korean': '/img/flags/kr.png',
+        '한국어': '/img/flags/kr.png',
+        'russian': '/img/flags/ru.png',
+        'русский': '/img/flags/ru.png',
+        'portuguese': '/img/flags/pt.png',
+        'português': '/img/flags/pt.png',
+        'Thai': '/img/flags/th.png',
+        'ไทย': '/img/flags/th.png',
+        'vietnamese': '/img/flags/vn.png',
+        'tiếng việt': '/img/flags/vn.png',
+        'tiếng-việt': '/img/flags/vn.png',
+        'rewrite': '/img/flags/gb.png'
+      };
+      %>
 
-    <%
-    var base_comp = '';
-    if (query.starts_with) {
-      base_comp = 'starts_with=' + query.starts_with;
-    } else if (query.search) {
-      base_comp = 'search=' + query.search;
-    }
-    manga_filters.forEach(function(manga_filter) {
-      if (query[manga_filter.param]) {
-        base_comp = manga_filter.param + '=' + encodeURIComponent(query[manga_filter.param]);
+      <%
+      var toCapitalize = function(str) {
+        return str.replace(/\b\w/g, function (chr) {
+          return chr.toUpperCase();
+        });
       }
-    });
-    if (query.from_dir) {
-      base_comp += '&from_dir=' + encodeURIComponent(query.from_dir);
-    }
-    var base_comp_without_listview = base_comp;
-    if (query.listview) {
-      base_comp += '&listview=' + query.listview;
-    }
-    %>
+      %>
 
-    <div class="row">
+      <%
+      var base_comp = '';
+      if (query.manga) {
+        base_comp = 'manga=' + encodeURIComponent(manga.relpath);
+      } else if (query.starts_with) {
+        base_comp = 'starts_with=' + query.starts_with;
+      } else if (query.search) {
+        base_comp = 'search=' + query.search;
+      }
+      if (query.from_dir) {
+        if (base_comp) {
+          base_comp += '&from_dir=' + encodeURIComponent(query.from_dir);
+        } else {
+          base_comp = 'from_dir=' + encodeURIComponent(query.from_dir);
+        }
+      }
+      var base_comp_without_filter = base_comp;
+      manga_filters.forEach(function(manga_filter) {
+        if (query[manga_filter.param]) {
+          base_comp = manga_filter.param + '=' + encodeURIComponent(query[manga_filter.param]);
+        }
+      });
+      var base_comp_without_listview = base_comp;
+      if (query.listview) {
+        base_comp += '&listview=' + query.listview;
+      }
+      %>
 
-      <div class="col-md-12">
-        <div id="view-search" class="<%=(query.q||query.view=='search'||query.search)?'':'hidden'%>">
-          <div id="search-panel" class="well">
-            <div class="">
-              <div style="margin: 15px auto;">
-                <form id="search-manga-form" role="form" action="/" method="GET">
+      <div class="row">
+
+        <%if ((query.view && query.view != 'reading' && query.view != 'search') || query.view == 'filters' || query.starts_with) {%>
+        <!-- START filters -->
+        <div id="filter-panels" class="col-md-12">
+          <%if (manga_starts_with_list.length) {%>
+          <div id="view-alphabet" class="<%=(query.starts_with||query.view=='alphabet')?'':'hidden'%>">
+            <div class="panel panel-default">
+              <div class="panel-heading"><i class="fa fa-sort-alpha-asc fa-fw"></i> Starts with</div>
+              <div class="panel-body" style="font-size: 16px;">
+            <%manga_starts_with_list.forEach(function(first_letter){%>
+              <a class="btn <%if (query['starts_with']==first_letter.name){%>btn-primary<%}else{%>btn-default<%}%> btn-sm filter-tag" href="/mangalist?starts_with=<%=first_letter.name%>"><%=first_letter.name%></a> 
+            <%});%>
+              </div>
+            </div>
+          </div>
+          <%}%>
+
+          <%manga_filters.forEach(function(manga_filter) {%>
+            <%if (query.view==manga_filter.index && manga_indices[manga_filter.index] && manga_indices[manga_filter.index].popular.length) {%>
+              <%
+              var index_items = [];
+              for (var index_name in manga_indices[manga_filter.index].map) { 
+                index_items.push({
+                  name: index_name, 
+                  count: manga_indices[manga_filter.index].map[index_name]
+                });
+              }
+              index_items.sort(function(a,b){
+                if (a.name > b.name) return 1;
+                if (a.name < b.name) return -1;
+                return 0;
+              });
+              %>
+          <div class="panel panel-default">
+            <div class="panel-heading">
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/mangalist" title="All Manga"><i class="fa fa-book fa-fw"></i></a></li>
+                <li class="breadcrumb-item"><%=manga_filter.title%> <span class="badge"><%=manga_indices[manga_filter.index].count%></span></li>
+              </ol>
+            </div>
+            <div class="panel-body">
+              <ul class="nav nav-tabs">
+                <li class="active"><a data-toggle="tab" href="#tab-<%=manga_filter.index%>-popular">Popular</a></li>
+                <li><a data-toggle="tab" href="#tab-<%=manga_filter.index%>-az">A-Z</a></li>
+              </ul>
+              <div class="tab-content" style="margin-top: 20px;">
+                <div id="tab-<%=manga_filter.index%>-popular" class="tab-pane fade in active">
+                  <div class="col-xs-12 col-sm-6">
+                  <%manga_indices[manga_filter.index].popular.forEach(function(item,idx){%>
+                    <%if (idx > manga_indices[manga_filter.index].popular.length/2) return;%>
+                    <%if (item.name=='-'||item.name=='') return;%>
+                    <div class="row">
+                      <div class="col-xs-3" style="text-align: right;"><span class="badge"><%=item.count%></span></div>
+                      <div class="col-xs-9"><a class="filter-tag" href="/mangalist?<%=manga_filter.param%>=<%=item.name%>" title="<%=item.name%>"><%=utils.ellipsisMiddle((manga_filter.hyphen)?utils.replaceAll(item.name||'(Empty)','-',' '):item.name,40,30,10)%></a></div>
+                    </div>
+                  <%});%>
+                  </div>
+                  <div class="col-xs-12 col-sm-6">
+                    <%manga_indices[manga_filter.index].popular.forEach(function(item,idx){%>
+                      <%if (idx <= manga_indices[manga_filter.index].popular.length/2) return;%>
+                      <%if (item.name=='-'||item.name=='') return;%>
+                    <div class="row">
+                      <div class="col-xs-3" style="text-align: right;"><span class="badge"><%=item.count%></span></div>
+                      <div class="col-xs-9"><a class="filter-tag" href="/mangalist?<%=manga_filter.param%>=<%=item.name%>" title="<%=item.name%>"><%=utils.ellipsisMiddle((manga_filter.hyphen)?utils.replaceAll(item.name||'(Empty)','-',' '):item.name,40,30,10)%></a></div>
+                    </div>
+                    <%});%>
+                  </div>
+                </div>
+                <div id="tab-<%=manga_filter.index%>-az" class="tab-pane fade">
+                  <%var current_first_char='';%>
+                  <div class="col-xs-12 col-sm-6">
+                    <%index_items.forEach(function(item,idx){%>
+                      <%if (idx > index_items.length/2) return;%>
+                      <%if (item.name=='-'||item.name=='') return;%>
+                      <%if (current_first_char != item.name[0]) {%>
+                        <%current_first_char = item.name[0];%>
+                    <div class="row">
+                      <div class="col-xs-3"></div>
+                      <div class="col-xs-9">
+                        <h4 class="filter-first-char-header"><%=current_first_char.toUpperCase()%></h4>
+                      </div>
+                    </div>
+                      <%}%>
+                    <div class="row">
+                      <div class="col-xs-3" style="text-align: right;"><span class="badge"><%=item.count%></span></div>
+                      <div class="col-xs-9"><a class="filter-tag" href="/mangalist?<%=manga_filter.param%>=<%=item.name%>" style=""><%=utils.ellipsisMiddle((manga_filter.hyphen)?utils.replaceAll(item.name,'-',' '):item.name,40,30,10)%></a></div>
+                    </div>
+                    <%});%>
+                  </div>
+                  <div class="col-xs-12 col-sm-6">
+                    <%index_items.forEach(function(item,idx){%>
+                      <%if (idx <= index_items.length/2) return;%>
+                      <%if (item.name=='-'||item.name=='') return;%>
+                      <%if (current_first_char != item.name[0]) {%>
+                        <%current_first_char = item.name[0];%>
+                    <div class="row">
+                      <div class="col-xs-3"></div>
+                      <div class="col-xs-9">
+                        <h4 class="filter-first-char-header"><%=current_first_char.toUpperCase()%></h4>
+                      </div>
+                    </div>
+                      <%}%>
+                    <div class="row">
+                      <div class="col-xs-3" style="text-align: right;"><span class="badge"><%=item.count%></span></div>
+                      <div class="col-xs-9"><a class="filter-tag" href="/mangalist?<%=manga_filter.param%>=<%=item.name%>" style=""><%=utils.ellipsisMiddle((manga_filter.hyphen)?utils.replaceAll(item.name,'-',' '):item.name,40,30,10)%></a></div>
+                    </div>
+                    <%});%>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+            <%}%>
+          <%});%>
+
+        </div><!-- filter-panels -->
+        <!-- END filters -->
+        <%}%>
+
+        <!-- START search -->
+        <div id="view-search" class="col-md-12 <%=(query.q||query.view=='search'||query.search)?'':'hidden'%>">
+          <div id="search-panel" class="panel panel-default">
+            <div class="panel-heading"><i class="fa fa-search fa-fw"></i> Search</div>
+            <div class="panel-body">
+              <div>
+                <form id="search-manga-form" role="form" action="/mangalist" method="GET">
                   <div class="input-group">
                   <%if (query.from_dir) {%>
                     <input type="hidden" name="from_dir" class="form-control" value="<%=query.from_dir%>">
@@ -41,7 +203,7 @@
                   </div>
                 </form>
                 <div>
-                  <%if(manga_search_recent.length){%>Recent search(es):<%}%>
+                  <%if(manga_search_recent.length){%>Recent:<%}%>
                   <%manga_search_recent.forEach(function(term) {%>
                   <a href="/mangalist?search=<%=term%>">(<%=term%>)</a> 
                   <%});%>
@@ -49,89 +211,60 @@
               </div>
             </div>
           </div><!-- search-panel -->
-        </div><!-- view-search -->
-      </div>
-
-      <div id="filter-panels" class="col-md-12">
-        <div class="hidden-lg hidden-md hidden-sm">
-          <div class="panel panel-default">
-            <div class="panel-heading" style="padding-bottom: 5px;padding-top: 5px;">A-Z</div>
-            <div class="panel-body">
-              <div id="start-with">
-                <%if (manga_starts_with_list.length) {%>
-                  <%manga_starts_with_list.forEach(function(first_letter){%>
-                    <a class="btn <%if (query['starts_with']==first_letter.name){%>btn-primary<%}else{%>btn-default<%}%> btn-sm" href="/mangalist?starts_with=<%=first_letter.name%>"><%=first_letter.name%></a> 
-                  <%});%>
-                <%}%>
-              </div>
-            </div><!-- panel-body -->
-          </div><!-- panel -->
         </div>
+        <!-- END search -->
 
-        <%if (manga_starts_with_list.length) {%>
-        <div id="view-alphabet" class="hidden-xs <%=(query.starts_with||query.view=='alphabet')?'':'hidden'%>">
-          <div class="panel panel-default">
-            <div class="panel-heading"><i class="fa fa-sort-alpha-asc fa-fw"></i> Starts with</div>
-            <div class="panel-body" style="font-size: 16px;">
-          <%manga_starts_with_list.forEach(function(first_letter){%>
-            <a class="btn <%if (query['starts_with']==first_letter.name){%>btn-primary<%}else{%>btn-default<%}%> btn-sm filter-tag" href="/mangalist?starts_with=<%=first_letter.name%>"><%=first_letter.name%></a> 
-          <%});%>
+        <%if (query.view == 'reading') {%>
+        <!-- START reading -->
+        <div class="col-md-12">
+          <div id="view-reading" class="panel panel-default">
+            <div class="panel-heading"><i class="fa fa-eye fa-fw"></i> Reading</div>
+            <div class="panel-body">
+            <%if (reading_manga_list.length == 0) {%>
+            <div>
+              <p>Empty here! You should read some first.</p>
+            </div>
+            <%}%>
+              <%reading_manga_list.forEach(function(manga_item){%>
+              <div class="manga-grid-item">
+                <div class="manga-cover-container">
+                  <a href="/manga?path=<%=encodeURIComponent(manga_item.relpath)%>" title="<%=manga_item.name%>">
+                    <%if (manga_item['cover_image']){%>
+                    <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/manga_cover?path=<%=encodeURIComponent(manga_item.relpath)%>&size=thumb" alt="" onerror="this.onerror=null;this.src='/img/no-cover.png';">
+                    <%}else{%>
+                    <img class="img-responsive" src="/img/no-cover.png" />
+                    <%}%>
+                  </a>
+                </div>
+                <div style="margin-bottom: 10px;">
+                  <b><%=utils.trimText(manga_item.name,60)%></b> 
+                  <%if (manga_item.language) {%>
+                  <p class="item-file-extra">
+                    <img src="<%=language_to_flag_map[manga_item.language.toLowerCase()]%>" title="<%=manga_item.language%>" />
+                  </p>
+                  <%}%>
+                  <p class="item-file-extra"><a class="open-external-link" href="/mangalist?from_dir=<%=encodeURIComponent(path.dirname(manga_item.relpath))%>&listview=cover"><%=path.basename(path.dirname(manga_item.relpath))%></a></p>
+                  <p class="item-file-extra">
+                    <%if (manga_item.chapters_count>1){%><span><%=manga_item.chapters_count%> chapters</span><%}else if (manga_item.chapters_count==1){%>
+                    <span>1 chapter</span><%}%>
+                  </p>
+                  <%if (manga_item.last_read){%>
+                  <p class="item-file-extra"><%=moment(manga_item.last_read).fromNow()%></p>
+                  <%}%>
+                  <%if (manga_item.last_read_chapter){%>
+                  <p class="item-file-extra"><a class="open-external-link" href="/viewer?path=<%=encodeURIComponent(manga_item.last_read_chapter.output_dir)%>" data-turbolinks="false"><%=manga_item.last_read_chapter.title%></a></p>
+                  <%}%>
+                </div>
+              </div>
+              <%});%>
             </div>
           </div>
-        </div><!-- view-alphabet -->
+        </div>
+        <!-- END reading -->
         <%}%>
 
-        <%manga_filters.forEach(function(manga_filter) {%>
-          <%if (query.view==manga_filter.index && manga_indices[manga_filter.index] && manga_indices[manga_filter.index].popular.length) {%>
-        <div class="panel panel-default">
-          <div class="panel-heading">
-            <ol class="breadcrumb">
-              <li class="breadcrumb-item"><a href="/mangalist" title="All Manga"><i class="fa fa-book fa-fw"></i></a></li>
-              <li class="breadcrumb-item"><%=manga_filter.title%> <span class="badge"><%=manga_indices[manga_filter.index].count%></span></li>
-            </ol>
-          </div>
-          <div class="panel-body">
-            <ul class="nav nav-tabs">
-              <li class="active"><a data-toggle="tab" href="#tab-<%=manga_filter.index%>-popular">Popular</a></li>
-              <li><a data-toggle="tab" href="#tab-<%=manga_filter.index%>-az">A-Z</a></li>
-            </ul>
-            <div class="tab-content" style="margin-top: 20px;">
-              <div id="tab-<%=manga_filter.index%>-popular" class="tab-pane fade in active">
-                <%manga_indices[manga_filter.index].popular.forEach(function(item,idx){%>
-                <a class="btn btn-default btn-sm filter-tag" href="/mangalist?<%=manga_filter.param%>=<%=item.name%>" style=""><b><%=utils.ellipsisMiddle((manga_filter.hyphen)?utils.replaceAll(item.name,'-',' '):item.name,40,30,10)%></b> <small><%=item.count%></small></a>
-                <%});%>
-              </div>
-              <div id="tab-<%=manga_filter.index%>-az" class="tab-pane fade">
-                <%
-                var index_items = [];
-                for (var index_name in manga_indices[manga_filter.index].map) { 
-                  index_items.push({name: index_name, count: manga_indices[manga_filter.index].map[index_name]});
-                }
-                index_items.sort(function(a,b){
-                  if (a.name > b.name) return 1;
-                  if (a.name < b.name) return -1;
-                  return 0;
-                });
-                %>
-                <%var current_first_char='';%>
-                <%index_items.forEach(function(item,idx){%>
-                <%  if (current_first_char != item.name[0]) {%>
-                <h4 style="text-transform: capitalize;"><%=item.name[0]%></h4>
-                <%  current_first_char = item.name[0];%>
-                <%  }%>
-                <a class="btn btn-default btn-sm filter-tag" href="/mangalist?<%=manga_filter.param%>=<%=item.name%>" style=""><b><%=utils.ellipsisMiddle((manga_filter.hyphen)?utils.replaceAll(item.name,'-',' '):item.name,40,30,10)%></b> <small><%=item.count%></small></a>
-                <%});%>
-              </div>
-            </div>
-          </div>
-        </div>
-          <%}%>
-        <%});%>
-
-      </div><!-- filter-panels -->
-
-      <div class="col-md-12">
-        <div id="list-items-panel" class="panel panel-default <%=(!query.view)?'':'hidden'%>">
+        <div class="col-md-12">
+          <div id="list-items-panel" class="panel panel-default <%=(!query.view)?'':'hidden'%>">
 
           <div class="panel-heading">
             <nav aria-label="breadcrumb" role="navigation">
@@ -187,14 +320,13 @@
                 <li class="breadcrumb-item">Search: <%=query.search%></li>
                 <%} else if (query.view) {%>
                 <li class="breadcrumb-item"><span class="text-capitalize"><%=query.view%></span></li>
-                <%} else if (!query.from_dir) {%>
-                <li class="breadcrumb-item">Manga List</li>
-                <%}%>
-                <%if (query.from_dir) {%>
+                <%} else if (query.from_dir) {%>
                   <%parents.forEach(function(parent){%>
                 <li class="breadcrumb-item"><a href="/mangalist?from_dir=<%=encodeURIComponent(parent.path)%>"><%=parent.name%></a></li>
                   <%});%>
                 <li class="breadcrumb-item"><%=path.basename(query.from_dir)%></li>
+                <%} else {%>
+                <li class="breadcrumb-item">Manga List</li>
                 <%}%>
               </ol>
             </nav>
@@ -220,103 +352,103 @@
             </h4>
           </div><!-- panel-heading -->
           <div class="panel-body">
-            <h5>
+            <h5 style="float: left;">
+              <%if (items_count == 0){%><span>0 manga</span><%}%>
               <%if (items_count>1){%><span><%=items_count%> manga</span><%}else if (items_count==1){%><span><%=items_count%> manga</span><%}%>
             </h5>
-              
-            <div style="min-height: 40px;">
-              <div class="<%=(manga_items.length)?'':'hidden'%>" style="float: right;height: 40px;">
-                <div class="dropdown" style="display: inline-block;">
-                  <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" style="padding-top: 3px;padding-bottom: 3px;">
-                    <%if (!query.mangasort||query.mangasort=='name'){%>Name <span class="caret"></span>
-                    <%} else if (query.mangasort=='chapters_count'){%>Chapters Count <span class="caret"></span>
-                    <%} else if (query.mangasort=='url'){%>URL <span class="caret"></span>
-                    <%} else if (query.mangasort=='last_update'){%>Last Update <span class="caret"></span>
-                    <%} else if (query.mangasort=='last_chapter_update'){%>Last Chapter Update <span class="caret"></span>
-                    <%} else if (query.mangasort=='rank'){%>Rank <span class="caret"></span>
-                    <%} else {%><span class="text-capitalize"><%=query.mangasort%></span> <span class="caret"></span><%}%>
-                  </button>
-                  <ul class="dropdown-menu dropdown-menu-right">
-                    <%if (!query.mangasort||query.mangasort=='name'){%>
-                      <%if(query.mangaorder=='desc'){%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=name&mangaorder=asc">Name</a></li>
-                      <%}else{%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=name&mangaorder=desc">Name</a></li>
-                      <%}%>
-                    <%}else{%>
-                    <li><a href="/mangalist?<%=base_comp%>&mangasort=name&mangaorder=desc">Name</a></li>
-                    <%}%>
 
-                    <%if (query.mangasort=='chapters_count'){%>
-                      <%if(query.mangaorder=='asc'){%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=chapters_count&mangaorder=desc">Chapters Count</a></li>
-                      <%}else{%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=chapters_count&mangaorder=asc">Chapters Count</a></li>
-                      <%}%>
+            <div style="float: right;height: 40px;">
+              <div class="dropdown" style="display: inline-block;">
+                <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" style="padding-top: 3px;padding-bottom: 3px;">
+                  <%if (!query.mangasort||query.mangasort=='name'){%>Name <span class="caret"></span>
+                  <%} else if (query.mangasort=='chapters_count'){%>Chapters Count <span class="caret"></span>
+                  <%} else if (query.mangasort=='url'){%>URL <span class="caret"></span>
+                  <%} else if (query.mangasort=='last_update'){%>Last Update <span class="caret"></span>
+                  <%} else if (query.mangasort=='last_chapter_update'){%>Last Chapter Update <span class="caret"></span>
+                  <%} else if (query.mangasort=='rank'){%>Rank <span class="caret"></span>
+                  <%} else {%><span class="text-capitalize"><%=query.mangasort%></span> <span class="caret"></span><%}%>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-right">
+                  <%if (!query.mangasort||query.mangasort=='name'){%>
+                    <%if(query.mangaorder=='desc'){%>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=name&mangaorder=asc">Name</a></li>
                     <%}else{%>
-                    <li><a href="/mangalist?<%=base_comp%>&mangasort=chapters_count">Chapters Count</a></li>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=name&mangaorder=desc">Name</a></li>
                     <%}%>
+                  <%}else{%>
+                  <li><a href="/mangalist?<%=base_comp%>&mangasort=name&mangaorder=desc">Name</a></li>
+                  <%}%>
 
-                    <%if (query.mangasort=='rank'){%>
-                      <%if(query.mangaorder=='desc'){%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=rank&mangaorder=asc">Rank</a></li>
-                      <%}else{%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=rank&mangaorder=desc">Rank</a></li>
-                      <%}%>
+                  <%if (query.mangasort=='chapters_count'){%>
+                    <%if(query.mangaorder=='asc'){%>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=chapters_count&mangaorder=desc">Chapters Count</a></li>
                     <%}else{%>
-                    <li><a href="/mangalist?<%=base_comp%>&mangasort=rank&mangaorder=desc">Rank</a></li>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=chapters_count&mangaorder=asc">Chapters Count</a></li>
                     <%}%>
+                  <%}else{%>
+                  <li><a href="/mangalist?<%=base_comp%>&mangasort=chapters_count">Chapters Count</a></li>
+                  <%}%>
 
-                    <%if (query.mangasort=='last_update'){%>
-                      <%if(query.mangaorder=='asc'){%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=last_update&mangaorder=desc">Last Update</a></li>
-                      <%}else{%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=last_update&mangaorder=asc">Last Update</a></li>
-                      <%}%>
+                  <%if (query.mangasort=='rank'){%>
+                    <%if(query.mangaorder=='desc'){%>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=rank&mangaorder=asc">Rank</a></li>
                     <%}else{%>
-                    <li><a href="/mangalist?<%=base_comp%>&mangasort=last_update">Last Update</a></li>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=rank&mangaorder=desc">Rank</a></li>
                     <%}%>
+                  <%}else{%>
+                  <li><a href="/mangalist?<%=base_comp%>&mangasort=rank&mangaorder=desc">Rank</a></li>
+                  <%}%>
 
-                    <%if (query.mangasort=='last_chapter_update'){%>
-                      <%if(query.mangaorder=='asc'){%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=last_chapter_update&mangaorder=desc">Last Chapter Update</a></li>
-                      <%}else{%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=last_chapter_update&mangaorder=asc">Last Chapter Update</a></li>
-                      <%}%>
+                  <%if (query.mangasort=='last_update'){%>
+                    <%if(query.mangaorder=='asc'){%>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=last_update&mangaorder=desc">Last Update</a></li>
                     <%}else{%>
-                    <li><a href="/mangalist?<%=base_comp%>&mangasort=last_chapter_update">Last Chapter Update</a></li>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=last_update&mangaorder=asc">Last Update</a></li>
                     <%}%>
+                  <%}else{%>
+                  <li><a href="/mangalist?<%=base_comp%>&mangasort=last_update">Last Update</a></li>
+                  <%}%>
 
-                    <%if (query.mangasort=='url'){%>
-                      <%if(query.mangaorder=='desc'){%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=url&mangaorder=asc">URL</a></li>
-                      <%}else{%>
-                    <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=url&mangaorder=desc">URL</a></li>
-                      <%}%>
+                  <%if (query.mangasort=='last_chapter_update'){%>
+                    <%if(query.mangaorder=='asc'){%>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=last_chapter_update&mangaorder=desc">Last Chapter Update</a></li>
                     <%}else{%>
-                    <li><a href="/mangalist?<%=base_comp%>&mangasort=url&mangaorder=desc">URL</a></li>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=last_chapter_update&mangaorder=asc">Last Chapter Update</a></li>
                     <%}%>
-                  </ul>
-                </div>
+                  <%}else{%>
+                  <li><a href="/mangalist?<%=base_comp%>&mangasort=last_chapter_update">Last Chapter Update</a></li>
+                  <%}%>
 
-                <div class="btn-group" style="display: inline-block;">
-                  <a href="/mangalist?<%=base_comp_without_listview%>&listview=cover" title="Cover list"  class="btn <%=(query.listview!='small'&&query.listview!='details')?'btn-default active':'btn-default'%>"><i class="fa fa-th fa-fw"></i></a>
-                  <a href="/mangalist?<%=base_comp_without_listview%>&listview=details" title="Detail list" class="btn <%=(query.listview=='details')?'btn-default active':'btn-default'%> hidden-xs"><i class="fa fa-th-list fa-fw"></i></a>
-                  <a href="/mangalist?<%=base_comp_without_listview%>&listview=small" title="Small list"  class="btn <%=(query.listview=='small')?'btn-default active':'btn-default'%>"><i class="fa fa-list fa-fw"></i></a>
-                </div>
+                  <%if (query.mangasort=='url'){%>
+                    <%if(query.mangaorder=='desc'){%>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=url&mangaorder=asc">URL</a></li>
+                    <%}else{%>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&mangasort=url&mangaorder=desc">URL</a></li>
+                    <%}%>
+                  <%}else{%>
+                  <li><a href="/mangalist?<%=base_comp%>&mangasort=url&mangaorder=desc">URL</a></li>
+                  <%}%>
+                </ul>
               </div>
 
-              <%var query_skip = (query.skip ? parseInt(query.skip) : 0);%>
-              <%var next_skip = query_skip+100;%>
+              <div class="btn-group" style="display: inline-block;">
+                <a href="/mangalist?<%=base_comp_without_listview%>&listview=cover" title="Cover list"  class="btn <%=(query.listview!='small'&&query.listview!='details')?'btn-default active':'btn-default'%>"><i class="fa fa-th fa-fw"></i></a>
+                <a href="/mangalist?<%=base_comp_without_listview%>&listview=details" title="Detail list" class="btn <%=(query.listview=='details')?'btn-default active':'btn-default'%> hidden-xs"><i class="fa fa-th-list fa-fw"></i></a>
+                <a href="/mangalist?<%=base_comp_without_listview%>&listview=small" title="Small list"  class="btn <%=(query.listview=='small')?'btn-default active':'btn-default'%>"><i class="fa fa-list fa-fw"></i></a>
+              </div>
+            </div>
 
-              <div id="top-navigation">
-              <%if (items_count>next_skip){%>
-              <p><%=(query_skip+1)%>-<%=(next_skip)%>, <a class="hidden-xs" href="/mangalist?<%=base_comp%>&skip=<%=next_skip%>">and more <%=(items_count-next_skip)%> manga...</a></p>
-              <%}else if (items_count > 0){%>
+            <%var query_skip = (query.skip ? parseInt(query.skip) : 0);%>
+            <%var next_skip = query_skip+100;%>
+
+            <div id="top-navigation" style="clear: both;">
+            <%if (items_count>next_skip){%>
+              <p><%=(query_skip+1)%>-<%=(next_skip)%>, <a href="/mangalist?<%=base_comp%>&skip=<%=next_skip%>">and more <%=(items_count-next_skip)%> manga...</a></p>
+            <%}else if (items_count > 0){%>
               <p><%=(query_skip+1)%>-<%=items_count%></p>
-              <%}%>
+            <%}%>
 
-              <%if (page_count > 1) {%>
+            <%if (page_count > 1) {%>
               <ul class="pagination" style="margin: 0 0 10px 0;">
                 <%if (current_page > 1) {%>
                   <li><a href="/mangalist?<%=base_comp%>&page=<%=current_page-1%>">&laquo;</a></li>
@@ -353,8 +485,7 @@
                   <li class="disabled"><a href="#">&raquo;</a></li>
                 <%}%>
               </ul>
-              <%}%>
-              </div>
+            <%}%>
             </div>
 
             <div style="overflow-x:auto;">
@@ -421,7 +552,7 @@
                         <li style="margin-bottom: 0;">
                           <small style="text-transform: capitalize;"><%=prop%>:</small> 
                           <%if (manga_field_filter_map[prop]) {%>
-                          <a class="btn <%if(query[manga_field_filter_map[prop].param]==manga_item[prop]){%>btn-primary<%}else{%>btn-default<%}%> btn-xs" href="/mangalist?<%=manga_field_filter_map[prop].param%>=<%=manga_item[prop]%>" style="text-transform: capitalize;"><%=(manga_field_filter_map[prop].hyphen)?utils.replaceAll(manga_item[prop],'-',' '):manga_item[prop]%></a>
+                          <a class="btn <%if(query[manga_field_filter_map[prop].param]==manga_item[prop]){%>btn-primary<%}else{%>btn-default<%}%> btn-xs" href="/mangalist?<%=manga_field_filter_map[prop].param%>=<%=manga_item[prop]%>" style="text-transform: capitalize;"><%if (prop == 'language') {%><img src="<%=language_to_flag_map[manga_item.language.toLowerCase()]%>" title="<%=manga_item.language%>" /> <%}%><%=(manga_field_filter_map[prop].hyphen)?utils.replaceAll(manga_item[prop],'-',' '):manga_item[prop]%></a>
                           <%} else {%>
                           <span><%=manga_item[prop]%></span>
                           <%}%>
@@ -454,7 +585,8 @@
                     <a href="/mangalist?<%=base_comp%>&mangasort=name&mangaorder=desc">Name</a>
                     <%}%>
                   </th>
-                  <td class="hidden-sm hidden-xs" style="color: grey;"></td>
+                  <th class="hidden-sm hidden-xs" style="color: grey;">
+                  </th>
                   <th class="hidden-sm hidden-xs">
                     <%if (query.mangasort=='chapters_count'){%>
                       <%if(query.mangaorder=='asc'){%>
@@ -518,7 +650,11 @@
                     <%}%>
 
                   </td>
-                  <td class="hidden-sm hidden-xs" style="color: grey;"></td>
+                  <td class="hidden-sm hidden-xs" style="color: grey;">
+                    <%if (manga_item.language) {%>
+                    <img src="<%=language_to_flag_map[manga_item.language.toLowerCase()]%>" title="<%=manga_item.language%>" />
+                    <%}%>
+                  </td>
                   <td class="hidden-sm hidden-xs" style="color: grey;">
                     <%if (manga_item.chapters_count>0){%><span><%=manga_item.chapters_count%></span><%}%>
                   </td>
@@ -531,7 +667,7 @@
               <hr style="margin-top: 0;" />
               <%manga_items.forEach(function(manga_item){%>
               <div class="manga-grid-item">
-                <div class="manga-cover-container" style="margin-bottom: 10px;">
+                <div class="manga-cover-container">
                   <a href="/manga?path=<%=encodeURIComponent(manga_item.relpath)%>" title="<%=manga_item.name%>">
                     <%if (manga_item['cover_image']){%>
                     <img class="img-responsive lazyload" src="/img/cover-placeholder.png" data-src="/manga_cover?id=<%=manga_item.id%>&size=thumb" alt="" onerror="this.onerror=null;this.src='/img/no-cover.png';">
@@ -540,16 +676,21 @@
                     <%}%>
                   </a>
                 </div>
-                <div style="margin-bottom: 10px;">
+                <div class="manga-grid-item-text">
                   <b><%=utils.trimText(manga_item.name,60)%></b> 
+                  <%if (manga_item.language) {%>
+                  <p class="item-file-extra">
+                    <img src="<%=language_to_flag_map[manga_item.language.toLowerCase()]%>" title="<%=manga_item.language%>" />
+                  </p>
+                  <%}%>
                   <p class="item-file-extra"><a class="open-external-link" href="/mangalist?from_dir=<%=encodeURIComponent(path.dirname(manga_item.relpath))%>&listview=cover"><%=path.basename(path.dirname(manga_item.relpath))%></a></p>
                   <p class="item-file-extra">
                     <%if (manga_item.chapters_count>1){%><span><%=manga_item.chapters_count%> chapters</span><%}else if (manga_item.chapters_count==1){%>
                     <span>1 chapter</span><%}%>
                   </p>
-                  <%if (manga_item.last_chapter_update && query.mangasort != 'last_update'){%>
+                  <%if (manga_item.last_chapter_update && query.mangasort!='last_update'){%>
                   <p class="item-file-extra"><%=moment(manga_item.last_chapter_update).fromNow()%></p>
-                  <%} else if (manga_item.last_update && query.mangasort == 'last_update'){%>
+                  <%} else if (manga_item.last_update && query.mangasort=='last_update'){%>
                   <p class="item-file-extra"><%=moment(manga_item.last_update).fromNow()%></p>
                   <%}%>
                 </div>
@@ -559,52 +700,51 @@
             </div>
 
             <div id="bottom-navigation">
-            <%if (items_count>next_skip){%>
-            <p><a  class="hidden-xs" href="/mangalist?<%=base_comp%>&skip=<%=next_skip%>">and more <%=(items_count-next_skip)%> manga...</a></p>
-            <%}%>
+              <%if (items_count>next_skip){%>
+              <p><a href="/mangalist?<%=base_comp%>&skip=<%=next_skip%>">and more <%=(items_count-next_skip)%> manga...</a></p>
+              <%}%>
 
-            <%if (page_count > 1) {%>
-            <ul class="pagination" style="margin: 0 0 10px 0;">
-              <%if (current_page > 1) {%>
-                <li><a href="/mangalist?<%=base_comp%>&page=<%=current_page-1%>">&laquo;</a></li>
-              <%} else {%>
-                <li class="disabled"><a href="#">&laquo;</a></li>
-              <%}%>
-              <%var i = 1;
-              if (current_page > 3) {
-                i = current_page - 2;
-              }%>
-              <%if (i !== 1) {%>
-                <li><a href="/mangalist?<%=base_comp%>&page=1">1</a></li>
-              <%}%>
-              <%if (i > 2) {%>
-                <li class="disabled"><a href="#">...</a></li>
-              <%}%>
-              <%for (i; i < page_count; i++) {%>
-                <%if (current_page == i) {%>
-                  <li class="active"><span><%=i%> <span class="sr-only">(current)</span></span></li>
+              <%if (page_count > 1) {%>
+              <ul class="pagination" style="margin: 0 0 10px 0;">
+                <%if (current_page > 1) {%>
+                  <li><a href="/mangalist?<%=base_comp%>&page=<%=current_page-1%>">&laquo;</a></li>
                 <%} else {%>
-                  <li><a href="/mangalist?<%=base_comp%>&page=<%=i%>"><%=i%></a></li>
+                  <li class="disabled"><a href="#">&laquo;</a></li>
                 <%}%>
-                <%if (i == page_count - 1) break;%>
-                <%if (i == (current_page + 2)) {%>
+                <%var i = 1;
+                if (current_page > 3) {
+                  i = current_page - 2;
+                }%>
+                <%if (i !== 1) {%>
+                  <li><a href="/mangalist?<%=base_comp%>&page=1">1</a></li>
+                <%}%>
+                <%if (i > 2) {%>
                   <li class="disabled"><a href="#">...</a></li>
-                  <%break;%>
                 <%}%>
-              <%}%>
-              <%if (current_page != page_count) {%>
-                <li><a href="/mangalist?<%=base_comp%>&page=<%=page_count%>"><%=page_count%></a></li>
-                <li><a href="/mangalist?<%=base_comp%>&page=<%=current_page+1%>">&raquo;</a></li>
-              <%} else {%>
-                <li class="active"><a href="/mangalist?<%=base_comp%>&page=<%=page_count%>"><%=page_count%></a></li>
-                <li class="disabled"><a href="#">&raquo;</a></li>
-              <%}%>
-            </ul>
+                <%for (i; i < page_count; i++) {%>
+                  <%if (current_page == i) {%>
+                    <li class="active"><span><%=i%> <span class="sr-only">(current)</span></span></li>
+                  <%} else {%>
+                    <li><a href="/mangalist?<%=base_comp%>&page=<%=i%>"><%=i%></a></li>
+                  <%}%>
+                  <%if (i == page_count - 1) break;%>
+                  <%if (i == (current_page + 2)) {%>
+                    <li class="disabled"><a href="#">...</a></li>
+                    <%break;%>
+                  <%}%>
+                <%}%>
+                <%if (current_page != page_count) {%>
+                  <li><a href="/mangalist?<%=base_comp%>&page=<%=page_count%>"><%=page_count%></a></li>
+                  <li><a href="/mangalist?<%=base_comp%>&page=<%=current_page+1%>">&raquo;</a></li>
+                <%} else {%>
+                  <li class="active"><a href="/mangalist?<%=base_comp%>&page=<%=page_count%>"><%=page_count%></a></li>
+                  <li class="disabled"><a href="#">&raquo;</a></li>
+                <%}%>
+              </ul>
             <%}%>
             </div><!-- bottom-navigation -->
           </div><!-- panel-body -->
-        </div><!-- list-items-panel -->
+          </div><!-- list-items-panel -->
         </div><!-- col-md-12 -->
 
         </div><!-- row -->
-        
