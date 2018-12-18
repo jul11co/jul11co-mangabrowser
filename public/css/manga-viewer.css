@@ -656,6 +656,10 @@ body {
   #chapter-page-nav-right {
     width: 40px;
   }
+  #chapter-page-nav-left a.disappear,
+  #chapter-page-nav-right a.disappear {
+    visibility: hidden;
+  }
 }
 
 #viewModeSettingsDropdown {
@@ -712,9 +716,6 @@ body {
   #chapter-list select {
     max-width: 150px;
   }
-}
-#mr-single-page-view span#single-page-progress { 
-  font-size: 14px;
 }
 .double-page-1 {
   float: left;

@@ -31,6 +31,8 @@ window.initViewer = function(opts) {
   var current_manga_chapters = [];
   var current_chapter_url = '';
 
+  var current_zoom_mode = 'fit-all'; // 'auto', 'fit-all', 'fit-height', 'fit-width'
+
   // console.log('View mode:', view_mode);
 
   var ellipsisMiddle = function(str, max_length, first_part, last_part) {
@@ -53,20 +55,54 @@ window.initViewer = function(opts) {
 
   var self = this;
 
-  $('#mr-single-page-view').click(function(event) {
-    if (view_mode == 'single' || view_mode == 'double') {
-      if ($('#manga-top-nav').hasClass('hidden')) {
-        $('#manga-top-nav').removeClass('hidden');
-        $('#mr-single-page-view').removeClass('hide-topbar');
-        showZoom();
-      } else {
-        $('#manga-top-nav').addClass('hidden');
-        $('#mr-single-page-view').addClass('hide-topbar');
-        hideZoom();
-      }
+  var showHideViewerControls = function() {
+    // toggle top nav
+    if ($('#manga-top-nav').hasClass('disappear')) {
+      $('#manga-top-nav').css("top", "-60px");
+    } else {
+      $('#manga-top-nav').css("top", "0px");
     }
+    // toggle back to top
+    if ($('#back-to-top').hasClass('disappear')) {
+      $('#back-to-top').css("bottom", "-60px");
+    } else {
+      $('#back-to-top').css("bottom", "10px");
+    }
+    // toggle chapter load progress
+    if ($('#chapter-load-progress').hasClass('disappear')) {
+      $('#chapter-load-progress').css("bottom", "-60px");
+    } else {
+      $('#chapter-load-progress').css("bottom", "10px");
+    }
+    // toggle zoom control
+    if ($('#zoom-control').hasClass('disappear')) {
+      $('#zoom-control').css("bottom", "-70px");
+    } else {
+      $('#zoom-control').css("bottom", "40px");
+    }
+    // hide settings view
     if (!$('#mr-settings-view').hasClass('hidden')) {
       $('#mr-settings-view').addClass('hidden');
+    }
+  }
+
+  $('#mr-scroll-pages-view').click(function(e) {
+    // e.preventDefault();
+    $('#manga-top-nav').toggleClass('disappear');
+    $('#back-to-top').toggleClass('disappear');
+    $('#chapter-load-progress').toggleClass('disappear');
+    $('#zoom-control').toggleClass('disappear');
+    showHideViewerControls();
+  });
+
+  $('#mr-single-page-view').click(function(event) {
+    if (view_mode == 'single' || view_mode == 'double') {
+      $('#manga-top-nav').toggleClass('hidden');
+      $('#mr-single-page-view').toggleClass('hide-topbar');
+      $('#zoom-control').toggleClass('disappear');
+      $('#chapter-page-nav-left a').toggleClass('disappear');
+      $('#chapter-page-nav-right a').toggleClass('disappear');
+      showHideViewerControls();
     }
   });
 
@@ -76,7 +112,9 @@ window.initViewer = function(opts) {
     var current_zoom_ratio = 1;
     if (view_mode == 'single' || view_mode == 'double') {
       current_zoom_ratio = $('#single-page-view-content img').first().width()/$('#single-page-view-content').width();
-      if (view_mode == 'double') current_zoom_ratio = current_zoom_ratio/2;
+      if (view_mode == 'double' && chapter_pages_current.length == 2) {
+        current_zoom_ratio = current_zoom_ratio/2;
+      }
     } else {
       current_zoom_ratio = $('#scroll-page-images img').first().width()/$('#scroll-page-images').width();
     }
@@ -93,14 +131,8 @@ window.initViewer = function(opts) {
       // } else {
       //   $('#zoom-control #zoom-in').removeClass('disable');
       // }
-      if (view_mode == 'scroll') {
-        $('#scroll-page-images img').css('height', 'auto');
-        $('#scroll-page-images img').css('width', zoom_w_value+'%');
-      } else if (view_mode == 'single' || view_mode == 'double') {
-        $('#single-page-view-content img').css('height', 'auto');
-        $('#single-page-view-content img').css('width', zoom_w_value+'%');
-      }
       saveZoomSettings(zoom_w_value, 'auto');
+      applyZoom();
     }
   });
 
@@ -110,7 +142,9 @@ window.initViewer = function(opts) {
     var current_zoom_ratio = 1;
     if (view_mode == 'single' || view_mode == 'double') {
       current_zoom_ratio = $('#single-page-view-content img').first().width()/$('#single-page-view-content').width();
-      if (view_mode == 'double') current_zoom_ratio = current_zoom_ratio/2;
+      if (view_mode == 'double' && chapter_pages_current.length == 2) {
+        current_zoom_ratio = current_zoom_ratio/2;
+      }
     } else {
       current_zoom_ratio = $('#scroll-page-images img').first().width()/$('#scroll-page-images').width();
     }
@@ -127,37 +161,49 @@ window.initViewer = function(opts) {
       } else {
         $('#zoom-control #zoom-out').removeClass('disable');
       }
-      if (view_mode == 'scroll') {
-        $('#scroll-page-images img').css('height', 'auto');
-        $('#scroll-page-images img').css('width', zoom_w_value+'%');
-      } else if (view_mode == 'single' || view_mode == 'double') {
-        $('#single-page-view-content img').css('height', 'auto');
-        $('#single-page-view-content img').css('width', zoom_w_value+'%');
-      }
       saveZoomSettings(zoom_w_value, 'auto');
+      applyZoom();
     }
+  });
+
+  $('#zoom-control #zoom-auto').on('click', function(event) {
+    event.preventDefault();
+    current_zoom_mode = 'auto';
+    if (view_mode == 'single' || view_mode == 'double') {
+      saveZoomSettings('auto', 'auto');
+    }
+    applyZoom();
   });
 
   $('#zoom-control #zoom-fit-height').on('click', function(event) {
     event.preventDefault();
+    current_zoom_mode = 'fit-height';
     if (view_mode == 'single' || view_mode == 'double') {
-      $('#single-page-view-content img').css('height', '100%');
-      $('#single-page-view-content img').css('width', 'auto');
       saveZoomSettings('auto', 100);
     }
+    applyZoom();
   });
 
   $('#zoom-control #zoom-fit-width').on('click', function(event) {
     event.preventDefault();
+    current_zoom_mode = 'fit-width';
     if (view_mode == 'single') {
-      $('#single-page-view-content img').css('height', 'auto');
-      $('#single-page-view-content img').css('width', '100%');
       saveZoomSettings(100, 'auto');
     } else if (view_mode == 'double') {
-      $('#single-page-view-content img').css('height', 'auto');
-      $('#single-page-view-content img').css('width', '50%');
       saveZoomSettings(50, 'auto');
     }
+    applyZoom();
+  });
+
+  $('#zoom-control #zoom-fit-all').on('click', function(event) {
+    event.preventDefault();
+    current_zoom_mode = 'fit-all';
+    if (view_mode == 'single') {
+      saveZoomSettings('auto', 'auto');
+    } else if (view_mode == 'double') {
+      saveZoomSettings('auto', 'auto');
+    }
+    applyZoom();
   });
 
   var getImageFileName = function(image_src) {
@@ -177,11 +223,15 @@ window.initViewer = function(opts) {
   }
 
   var hideZoom = function() {
-    $('#zoom-control').addClass('hidden');
+    // $('#zoom-control').addClass('hidden');
+    $('#zoom-control').addClass('disappear');
+    $('#zoom-control').css("bottom", "-70px");
   }
 
   var showZoom = function() {
-    $('#zoom-control').removeClass('hidden');
+    // $('#zoom-control').removeClass('hidden');
+    $('#zoom-control').removeClass('disappear');
+    $('#zoom-control').css("bottom", "40px");
   }
 
   var resetZoom = function() {
@@ -206,6 +256,20 @@ window.initViewer = function(opts) {
     } else if (view_mode == 'single') {
       $('#single-page-view-content img').css('width', (zoom_w_value == 'auto') ? 'auto' : zoom_w_value+'%');
       $('#single-page-view-content img').css('height', (zoom_h_value == 'auto') ? 'auto' : zoom_h_value+'%');
+      if (current_zoom_mode.indexOf('fit-') == 0) {
+        if (current_zoom_mode == 'fit-all') {
+          $('#single-page-view-content img').css('max-width', '100%');
+          $('#single-page-view-content img').css('max-height', '100%');
+        } else if (current_zoom_mode == 'fit-height') {
+          $('#single-page-view-content img').css('max-width', '');
+        } else if (current_zoom_mode == 'fit-width') {
+          $('#single-page-view-content img').css('max-height', '');
+        }
+      }
+      else if (current_zoom_mode == 'auto') {
+        $('#single-page-view-content img').css('max-width', '');
+        $('#single-page-view-content img').css('max-height', '');
+      }
     } else if (view_mode == 'double') {
       if (zoom_w_value == 'auto') {
         $('#single-page-view-content img').css('width', 'auto');
@@ -216,9 +280,24 @@ window.initViewer = function(opts) {
           $('#zoom-width-value').attr('data-value', zoom_w_value);
           saveZoomSettings(zoom_w_value);
         }
+
         $('#single-page-view-content img').css('width', zoom_w_value+'%');
       }
       $('#single-page-view-content img').css('height', (zoom_h_value == 'auto') ? 'auto' : zoom_h_value+'%');
+      if (current_zoom_mode.indexOf('fit-') == 0) {
+        if (current_zoom_mode == 'fit-all') {
+          $('#single-page-view-content img').css('max-width', chapter_pages_current.length == 1 ? '100%':'50%');
+          $('#single-page-view-content img').css('max-height', '100%');
+        } else if (current_zoom_mode == 'fit-height') {
+          $('#single-page-view-content img').css('max-width', '');
+        } else if (current_zoom_mode == 'fit-width') {
+          $('#single-page-view-content img').css('max-height', '');
+        }
+      }
+      else if (current_zoom_mode == 'auto') {
+        $('#single-page-view-content img').css('max-width', '');
+        $('#single-page-view-content img').css('max-height', '');
+      }
     }
   }
 
@@ -228,6 +307,7 @@ window.initViewer = function(opts) {
       view_mode = mode;
       // console.log('Switch view mode:', view_mode);
 
+      // -> scroll
       if (view_mode == 'scroll' && $('#mr-scroll-pages-view').hasClass('hidden')) {
         $('#mr-scroll-pages-view').removeClass('hidden');
         $('#mr-single-page-view').addClass('hidden');
@@ -240,6 +320,8 @@ window.initViewer = function(opts) {
       } else {
         $('#mr-scroll-pages-view').addClass('hidden');
       }
+
+      // -> single
       if (view_mode == 'single' && (prev_mode == 'double' || $('#mr-single-page-view').hasClass('hidden'))) {
         $('#mr-single-page-view').removeClass('hidden');
         chapter_page_current = -1;
@@ -251,6 +333,8 @@ window.initViewer = function(opts) {
         $('#manga-top-nav').removeClass('hidden');
         $('#mr-single-page-view').removeClass('hide-topbar');
       }
+
+      // -> double
       if (view_mode == 'double' && (prev_mode == 'single' || $('#mr-single-page-view').hasClass('hidden'))) {
         $('#mr-single-page-view').removeClass('hidden');
         chapter_page_current = -1;
@@ -262,11 +346,31 @@ window.initViewer = function(opts) {
         $('#manga-top-nav').removeClass('hidden');
         $('#mr-single-page-view').removeClass('hide-topbar');
       }
+
+      if (view_mode == 'scroll') {
+        $('#zoom-fit-height').addClass('hidden');
+        $('#zoom-fit-width').addClass('hidden');
+        $('#zoom-fit-all').addClass('hidden');
+        $('#zoom-auto').addClass('hidden');
+      } else {
+        $('#zoom-fit-height').removeClass('hidden');
+        $('#zoom-fit-width').removeClass('hidden');
+        $('#zoom-fit-all').removeClass('hidden');
+        $('#zoom-auto').removeClass('hidden');
+      }
+
     }
   }
 
   self.changeViewDirection = function(direction) {
     view_direction = direction;
+    if (view_direction == 'left-to-right') {
+      $('#chapter-page-nav-left a').attr('title', 'Prev page (Left)');
+      $('#chapter-page-nav-right a').attr('title', 'Next page (Right)');
+    } else {
+      $('#chapter-page-nav-left a').attr('title', 'Next page (Left)');
+      $('#chapter-page-nav-right a').attr('title', 'Prev page (Right)');
+    }
   }
 
   self.enableCoverPage = function() {
@@ -365,18 +469,10 @@ window.initViewer = function(opts) {
         if (chapter_page_images[i].scroll) continue;
         chapter_page_images[i].scroll = true;
 
-        // var image_file_name = getImageFileName(chapter_page_images[i].src);
-        // $('#scroll-page-images').append(
-        //   '<img class="lazy" src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs=" ' +
-        //     'data-src="/images/' + image_file_name + '?' + 
-        //     buildQueryComponent({src: chapter_page_images[i].src}) + '&reader=1"' +
-        //     ' alt="' + image_file_name + '"' +
-        //     ' style="min-height:250px;">'
-        // );
         $('#scroll-page-images').append(
           '<img class="lazy" src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs=" ' +
-            'data-src="' + chapter_page_images[i].src + '"' +
-            ' style="min-height:250px;">'
+            'data-src="' + chapter_page_images[i].src + '" ' +
+            'style="min-height:250px;">'
         );
       }
 
@@ -399,69 +495,24 @@ window.initViewer = function(opts) {
   }
 
   var renderSinglePageView = function(current_image) {
-    // var image_file_name = getImageFileName(current_image.src);
-    // $('#single-page-view-content').html(
-    //   '<span class="single-page-filler"></span>' +
-    //   '<img class="single-page-image fit-height lazy" ' +
-    //     'src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs=" ' +
-    //     'data-src="/images/' + image_file_name + '?' + 
-    //     buildQueryComponent({src: current_image.src}) + '&reader=1" alt="' + image_file_name + 
-    //     '" style="min-height:50px;">'
-    // );
-    // $('#single-page-view-content').html(
-    //   '<span class="single-page-filler"></span>' +
-    //   '<img class="single-page-image fit-height lazy" ' +
-    //     'src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs=" ' +
-    //     'data-src="' + current_image.src + '" style="min-height:50px;">'
-    // );
+    $('#single-page-view-content').scrollTop(0);
     $('#single-page-view-content').html(
       '<span class="single-page-filler"></span>' +
-      '<img class="single-page-image fit-height" ' +
-        'src="' + current_image.src + '" style="min-height:50px;max-width: 100%;">'
+      '<img class="single-page-image" ' +
+        'src="' + current_image.src + '" style="min-height:50px;max-width:100%;">'
     );
     applyZoom();
     // $("#single-page-view-content img.lazy").Lazy();
   }
 
   var renderDoublePageView = function(image1, image2) {
+    $('#single-page-view-content').scrollTop(0);
     var page_view_html = '<span class="single-page-filler"></span>';
 
-    // var image1_file_name = getImageFileName(image1.src);
-    // var image1_html = '<img class="single-page-image fit-height lazy" ' +
-    //   'src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs=" ' +
-    //   'data-src="/images/' + image1_file_name + '?' + 
-    //   buildQueryComponent({src: image1.src}) + '&reader=1" alt="' + image1_file_name + '" style="min-height:50px;">';
-    // var image1_html = '<img class="single-page-image fit-height lazy" ' +
-    //   'src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs=" ' +
-    //   'data-src="' + image1.src + '" alt="" style="min-height:50px;">';
-    // var image1_html = '<img class="single-page-image fit-height" ' +
-    //   'src="' + image1.src + '" alt="" style="min-height:50px;max-width:50%;">';
-
-    // if (image2) {
-    //   // var image2_file_name = getImageFileName(image2.src);
-    //   // var image2_html = '<img class="single-page-image fit-height lazy" ' +
-    //   //   'src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs=" ' +
-    //   //   'data-src="/images/' + getImageFileName(image2.src) + '?' + 
-    //   //   buildQueryComponent({src: image2.src}) + '&reader=1" alt="' + image2_file_name + '" style="min-height:50px;">';
-    //   // var image2_html = '<img class="single-page-image fit-height lazy" ' +
-    //   //   'src="data:image/gif;base64,R0lGODdhAQABAPAAAMPDwwAAACwAAAAAAQABAAACAkQBADs=" ' +
-    //   //   'data-src="' + image2.src + '" alt="" style="min-height:50px;">';
-    //   var image2_html = '<img class="single-page-image fit-height" ' +
-    //     'src="' + image2.src + '" alt="" style="min-height:50px;max-width:50%;">';
-
-    //   if (view_direction == 'right-to-left') {
-    //     page_view_html += image2_html + image1_html;
-    //   } else {
-    //     page_view_html += image1_html + image2_html;
-    //   }
-    // } else {
-    //   page_view_html += image1_html;
-    // }
-
     if (image2) {
-      page_view_html += '<img id="double-page-left" class="single-page-image fit-height" ' +
+      page_view_html += '<img id="double-page-left" class="single-page-image" ' +
         'src="" alt="" style="min-height:50px;max-width:50%;">';
-      page_view_html += '<img id="double-page-right" class="single-page-image fit-height" ' + 
+      page_view_html += '<img id="double-page-right" class="single-page-image" ' + 
         'src="" alt="" style="min-height:50px;max-width:50%;">';
 
       $('#single-page-view-content').html(page_view_html);
@@ -482,8 +533,8 @@ window.initViewer = function(opts) {
         $('#double-page-left').attr('src', image1.src);
       }
     } else {
-      page_view_html += '<img class="single-page-image fit-height" ' +
-        'src="' + image1.src + '" alt="" style="min-height:50px;max-width:50%;">';
+      page_view_html += '<img class="single-page-image" ' +
+        'src="' + image1.src + '" alt="" style="min-height:50px;max-width:100%;">';
 
       $('#single-page-view-content').html(page_view_html);
     }
@@ -494,9 +545,6 @@ window.initViewer = function(opts) {
 
   var preloadSinglePageImage = function(preload_image) {
     var preloadImage = new Image();
-
-    // preloadImage.src = '/images/' + getImageFileName(preload_image.src) + '?' + 
-    //   buildQueryComponent({src: preload_image.src}) + '&reader=1';
     preloadImage.src = preload_image.src;
     // console.log('Preload:', preload_image.src);
     
@@ -518,17 +566,15 @@ window.initViewer = function(opts) {
       if (!current_image) return;
 
       // console.log('Load:', current_image.src);
-      console.log(current_image);
+      // console.log(current_image);
 
       chapter_pages_current = [chapter_page_current];
       renderSinglePageView(current_image);
 
       if (chapter_page_current < chapter_page_images.length-1) {
-        // preloadSinglePageImage(chapter_page_images[chapter_page_current+1]);
         preload_images.push(chapter_page_images[chapter_page_current+1]);
       }      
       if (chapter_page_current < chapter_page_images.length-2) {
-        // preloadSinglePageImage(chapter_page_images[chapter_page_current+2]);
         preload_images.push(chapter_page_images[chapter_page_current+2]);
       }
     } else if (view_mode == 'double' && chapter_page_images.length) {
@@ -536,36 +582,28 @@ window.initViewer = function(opts) {
       if (!current_image) return;
 
       // console.log('Load:', current_image.src);
-      console.log(current_image);
+      // console.log(current_image);
       
       chapter_pages_current = [chapter_page_current];
 
-      // if (chapter_page_current > 0 && chapter_page_current < chapter_page_images.length-1) {
       if ((chapter_page_current > 0 && chapter_page_current < chapter_page_images.length-1) 
         || (chapter_page_current == 0 && !cover_page_enable)) {
         var next_image = chapter_page_images[chapter_page_current+1];
         // console.log('Load:', next_image.src);
-        console.log(next_image);
-
-        // chapter_pages_current.push(chapter_page_current+1);
-        // renderDoublePageView(current_image, next_image);
+        // console.log(next_image);
 
         if (current_image.width && current_image.height && current_image.width > current_image.height) {
-          // console.log('Current Image: ' + current_image.width + 'x' + current_image.height + ' ' + current_image.src);
           // Render current image
           renderSinglePageView(current_image);
 
           if (next_image) {
-            // preloadSinglePageImage(next_image);
             preload_images.push(next_image);
           }
         } else if (next_image && next_image.width && next_image.height && next_image.width > next_image.height) {
-          // console.log('Next Image: ' + next_image.width + 'x' + next_image.height + ' ' + next_image.src);
           // Render current image
           renderSinglePageView(current_image);
 
           if (next_image) {
-            // preloadSinglePageImage(next_image);
             preload_images.push(next_image);
           }
         } else {
@@ -577,17 +615,14 @@ window.initViewer = function(opts) {
         renderSinglePageView(current_image);
         
         if (chapter_page_current < chapter_page_images.length-1) {
-          // preloadSinglePageImage(chapter_page_images[chapter_page_current+1]);
           preload_images.push(chapter_page_images[chapter_page_current+1]);
         }
       }
 
       if (chapter_page_current < chapter_page_images.length-2) {
-        // preloadSinglePageImage(chapter_page_images[chapter_page_current+2]);
         preload_images.push(chapter_page_images[chapter_page_current+2]);
       }
       if (chapter_page_current < chapter_page_images.length-3) {
-        // preloadSinglePageImage(chapter_page_images[chapter_page_current+3]);
         preload_images.push(chapter_page_images[chapter_page_current+3]);
       }
     }
@@ -601,8 +636,9 @@ window.initViewer = function(opts) {
     }
 
     if (((view_mode == 'single' && chapter_page_current == chapter_page_images.length-1)
-      ||(view_mode == 'double' && chapter_page_current >= chapter_page_images.length-2)) 
-      && isLastChapter(current_chapter_url)) { // last page (of last chapter)
+      ||(view_mode == 'double' && chapter_page_current >= chapter_page_images.length - chapter_pages_current.length)) 
+      && isLastChapter(current_chapter_url)) { 
+      // last page (of last chapter)
       // next page nav will be hidden
       if (view_direction == 'left-to-right') { // right == next
         $('#chapter-page-nav-right a').addClass('hidden');
@@ -611,8 +647,8 @@ window.initViewer = function(opts) {
         $('#chapter-page-nav-left a').addClass('hidden');
         $('#chapter-page-nav-right a').removeClass('hidden');
       }
-    } else if (chapter_page_current == 0 
-      && isFirstChapter(current_chapter_url)) { // first page (of first chapter)
+    } else if (chapter_page_current == 0 && isFirstChapter(current_chapter_url)) { 
+      // first page (of first chapter)
       // previous page nav will be hidden
       if (view_direction == 'left-to-right') { // left == previous
         $('#chapter-page-nav-left a').addClass('hidden');
@@ -624,6 +660,14 @@ window.initViewer = function(opts) {
     } else {
       $('#chapter-page-nav-right a').removeClass('hidden');
       $('#chapter-page-nav-left a').removeClass('hidden');
+    }
+  }
+
+  var updateSinglePageProgress = function(current, total) {
+    if (Array.isArray(current) && current.length == 2) {
+      $('#single-page-progress').text(current[0] + ' - ' + current[1] + ' of ' + total);
+    } else if (typeof current == 'number') {
+      $('#single-page-progress').text(current + ' of ' + total);
     }
   }
 
@@ -639,19 +683,23 @@ window.initViewer = function(opts) {
         chapter_page_current = 0;
         renderCurrentPageView(); // display first page
       }
-      $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length
-        + ' (' + chapter_pages.length + ')');
+      // $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length
+      //   /*+ ' (' + chapter_pages.length + ')'*/);
+      updateSinglePageProgress((chapter_page_current+1), chapter_page_images.length);
     } else if (view_mode == 'double' && chapter_page_images.length) {
       if (chapter_page_current == -1) {
         chapter_page_current = 0;
         renderCurrentPageView(); // display first page
       }
       if (chapter_page_current < chapter_page_images.length-1 && chapter_pages_current.length == 2) {
-        $('#single-page-progress').text((chapter_page_current+1) + ' - ' + (chapter_page_current+2) 
-          + ' of ' + chapter_page_images.length + ' (' + chapter_pages.length + ')');
+        // $('#single-page-progress').text((chapter_page_current+1) + ' - ' + (chapter_page_current+2) 
+        //   + ' of ' + chapter_page_images.length
+        //   /* + ' (' + chapter_pages.length + ')'*/);
+        updateSinglePageProgress([chapter_page_current+1, chapter_page_current+2], chapter_page_images.length);
       } else {
-        $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length
-          + ' (' + chapter_pages.length + ')');
+        // $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length
+        //   /*+ ' (' + chapter_pages.length + ')'*/);
+        updateSinglePageProgress((chapter_page_current+1), chapter_page_images.length);
       }
     }
   }
@@ -663,8 +711,9 @@ window.initViewer = function(opts) {
     
       renderCurrentPageView();
 
-      $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length
-        + ' (' + chapter_pages.length + ')');
+      // $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length
+      //   /*+ ' (' + chapter_pages.length + ')'*/);
+      updateSinglePageProgress((chapter_page_current+1), chapter_page_images.length);
     } else if (view_mode == 'double' && chapter_page_images.length) {
       if (chapter_page_current+chapter_pages_current.length >= chapter_page_images.length) {
         chapter_page_current = chapter_page_images.length-1;
@@ -676,11 +725,14 @@ window.initViewer = function(opts) {
       renderCurrentPageView();
 
       if (chapter_page_current < chapter_page_images.length-1 && chapter_pages_current.length == 2) {
-        $('#single-page-progress').text((chapter_page_current+1) + ' - ' + (chapter_page_current+2) 
-          + ' of ' + chapter_page_images.length + ' (' + chapter_pages.length + ')');
+        // $('#single-page-progress').text((chapter_page_current+1) + ' - ' + (chapter_page_current+2) 
+        //   + ' of ' + chapter_page_images.length
+        //   /* + ' (' + chapter_pages.length + ')'*/);
+        updateSinglePageProgress([chapter_page_current+1,chapter_page_current+2], chapter_page_images.length);
       } else {
-        $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length
-          + ' (' + chapter_pages.length + ')');
+        // $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length
+        //   /*+ ' (' + chapter_pages.length + ')'*/);
+        updateSinglePageProgress((chapter_page_current+1), chapter_page_images.length);
       }
     }
   }
@@ -691,8 +743,9 @@ window.initViewer = function(opts) {
 
       renderCurrentPageView();
 
-      $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length
-         + ' (' + chapter_pages.length + ')');
+      // $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length
+      //    /*+ ' (' + chapter_pages.length + ')'*/);
+      updateSinglePageProgress((chapter_page_current+1), chapter_page_images.length);
     } else if (view_mode == 'double' && chapter_page_images.length) {
       if (chapter_page_current == 0) {
         return;
@@ -703,20 +756,19 @@ window.initViewer = function(opts) {
       renderCurrentPageView();
 
       if (chapter_page_current > 0 && chapter_pages_current.length == 2) {
-        $('#single-page-progress').text((chapter_page_current+1) + ' - '  + (chapter_page_current+2) 
-          + ' of ' + chapter_page_images.length + ' (' + chapter_pages.length + ')');
+        // $('#single-page-progress').text((chapter_page_current+1) + ' - '  + (chapter_page_current+2) 
+        //   + ' of ' + chapter_page_images.length
+        //   /*+ ' (' + chapter_pages.length + ')'*/);
+        updateSinglePageProgress([chapter_page_current+1,chapter_page_current+2], chapter_page_images.length);
       } else {
-        $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length 
-          + ' (' + chapter_pages.length + ')');
+        // $('#single-page-progress').text((chapter_page_current+1) + ' of ' + chapter_page_images.length 
+        //   /* +  ' (' + chapter_pages.length + ')'*/);
+        updateSinglePageProgress((chapter_page_current+1), chapter_page_images.length);
       }
     }
   }
 
   var nextChapterPage = function() {
-    // return renderNextChapterPageImage();
-
-    // console.log('nextChapterPage:', view_mode, chapter_page_current +'/'+ (chapter_pages.length-1), isLastChapter(current_chapter_url));
-
     if (chapter_page_current < chapter_pages.length-1) {
       var min_page_idx = Math.min(chapter_page_current+1, chapter_pages.length-1);
       var max_page_idx = Math.min(chapter_page_current+2, chapter_pages.length-1);
@@ -724,25 +776,21 @@ window.initViewer = function(opts) {
       return loadChapterPages(chapter_pages, min_page_idx, max_page_idx, function() {
         renderNextChapterPageImage();
 
-        // console.log('nextChapterPage:', view_mode, chapter_page_current +'/'+ (chapter_pages.length-1));
-
         // preload more 2 pages
         min_page_idx = Math.min(chapter_page_current+3, chapter_pages.length-1);
         max_page_idx = Math.min(chapter_page_current+4, chapter_pages.length-1);
         loadChapterPages(chapter_pages, min_page_idx, max_page_idx);
       });
-    } else if (((view_mode == 'single' && chapter_page_current == chapter_pages.length-1) 
-      || (view_mode == 'double' && chapter_page_current >= (chapter_pages.length-2)))
-      && !isLastChapter(current_chapter_url)) { // last page
-      return loadNextChapter();
+    } else if (!isLastChapter(current_chapter_url)) {
+      if ((view_mode == 'single' && chapter_page_current == chapter_pages.length-1) 
+        || (view_mode == 'double' && chapter_page_current >= (chapter_pages.length-chapter_pages_current.length))) {
+        // last page
+        return loadNextChapter();
+      }
     }
   }
 
   var prevChapterPage = function() {
-    // return renderPrevChapterPageImage();
-
-    // console.log('prevChapterPage:', view_mode, chapter_page_current +'/'+ (chapter_pages.length-1));
-
     if (chapter_page_current > 0) {
       var min_page_idx = Math.max(0, chapter_page_current-2);
       var max_page_idx = Math.max(chapter_page_current-1, 0);
@@ -755,7 +803,8 @@ window.initViewer = function(opts) {
         max_page_idx = Math.max(chapter_page_current-3, 0);
         loadChapterPages(chapter_pages, min_page_idx, max_page_idx);
       });
-    } else if ((chapter_page_current == 0) && !isFirstChapter(current_chapter_url)) { // first page
+    } else if ((chapter_page_current == 0) && !isFirstChapter(current_chapter_url)) { 
+      // first page
       return loadPreviousChapter();
     }
   }
@@ -900,7 +949,6 @@ window.initViewer = function(opts) {
           break;
         }
       }
-      // console.log('getChapterIndex:', chapter_idx + '/' + (manga_chapters.length-1), chapter_url);
       return chapter_idx;
     } else {
       return -1;
@@ -937,7 +985,8 @@ window.initViewer = function(opts) {
   var loadPreviousChapter = function() {
     if (current_manga_chapters && current_manga_chapters.length) {
       var current_chapter_idx = getChapterIndex(current_chapter_url);
-      var previous_chapter = (current_chapter_idx < current_manga_chapters.length-1) ? current_manga_chapters[current_chapter_idx+1] : null;
+      var previous_chapter = (current_chapter_idx < current_manga_chapters.length-1) 
+        ? current_manga_chapters[current_chapter_idx+1] : null;
       if (previous_chapter) {
         // console.log('loadPreviousChapter:', previous_chapter.url);
         loadMangaChapter(previous_chapter.url);
@@ -992,7 +1041,8 @@ window.initViewer = function(opts) {
             }
 
             // change chapter-previous
-            var previous_chapter = (current_chapter_idx < manga_chapters.length-1) ? manga_chapters[current_chapter_idx+1] : null;
+            var previous_chapter = (current_chapter_idx < manga_chapters.length-1) 
+              ? manga_chapters[current_chapter_idx+1] : null;
             if (previous_chapter) {
               $('#chapter-previous').attr('href', '/viewer?' + buildQueryComponent({link: previous_chapter.url}));
               $('#chapter-previous').attr('data-chapter-url', previous_chapter.url);
@@ -1012,7 +1062,7 @@ window.initViewer = function(opts) {
 
   var renderChapterList = function(manga_chapters) {
 
-    console.log('renderChapterList:', 'chapters: ' + manga_chapters.length);
+    // console.log('renderChapterList:', 'chapters: ' + manga_chapters.length);
 
     $('#chapter-list select').html('');
 
@@ -1092,7 +1142,7 @@ window.initViewer = function(opts) {
   var loadChapterList = function(manga_link, callback) {
     callback = callback || function() {};
 
-    console.log('loadChapterList:', manga_link);
+    // console.log('loadChapterList:', manga_link);
     
     if (typeof manga_link == 'undefined' || manga_link == '') {
       return callback();
@@ -1115,8 +1165,7 @@ window.initViewer = function(opts) {
         if (result.page.manga.url && result.page.manga.name) {
           // var manga_url = result.page.manga.url;
           var manga_url = '/manga?path=' + encodeURIComponent(result.page.manga.url);
-          $('#manga-title').html('<a href="' + manga_url + '" target="_blank">' 
-            + trimText(result.page.manga.name,40) + '</a> »');
+          $('#manga-title').html('<a href="' + manga_url + '">' + trimText(result.page.manga.name,40) + '</a> »');
         }
 
         renderChapterList(result.page.manga.chapters);
@@ -1134,7 +1183,7 @@ window.initViewer = function(opts) {
     if (manga_info.url && manga_info.name) {
       // var manga_url = manga_info.url;
       var manga_url = '/manga?path=' + encodeURIComponent(manga_info.url);
-      $('#manga-title').html('<a href="' + manga_url + '" target="_blank">' + trimText(manga_info.name,40) + '</a> »');
+      $('#manga-title').html('<a href="' + manga_url + '">' + trimText(manga_info.name,40) + '</a> »');
     }
     
     // if (manga_info.chapter_title) {
@@ -1165,7 +1214,7 @@ window.initViewer = function(opts) {
       });
 
       // console.log(chapter_pages);
-      console.log('Chapter pages: ' + chapter_pages.length);
+      // console.log('Chapter pages: ' + chapter_pages.length);
       total_pages = chapter_pages.length;
 
       $('#chapter-load-progress').text('' + loaded_images + '/' + loaded_pages + '/' + total_pages);
@@ -1191,7 +1240,7 @@ window.initViewer = function(opts) {
         });
 
         // console.log(chapter_pages);
-        console.log('Chapter pages: ' + chapter_pages.length);
+        // console.log('Chapter pages: ' + chapter_pages.length);
         total_pages = chapter_pages.length;
 
         $('#chapter-load-progress').text('' + loaded_images + '/' + loaded_pages + '/' + total_pages);

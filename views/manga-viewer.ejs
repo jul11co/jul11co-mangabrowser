@@ -36,18 +36,6 @@
 
   <div id="manga-top-nav">
     <div id="right-tools">
-      <div id="viewModeSettingsDropdown" class="dropdown hidden">
-        <button class="dropdown-toggle" type="button" data-toggle="dropdown">
-          <span id="viewModeSettingsDropdownLabel" style="text-transform: capitalize;"><%=(viewer_theme)%></span>
-          <span class="caret"></span>
-        </button>
-        <ul id="viewModeSettings" class="dropdown-menu" style="min-width: 60px;">
-          <li <%if(viewer_view_mode=='scroll'){%>class="active"<%}%>><a href="#" data-view-mode="scroll">Scroll</a></li>
-          <li <%if(viewer_view_mode=='single'){%>class="active"<%}%>><a href="#" data-view-mode="single">Single</a></li>
-          <li <%if(viewer_view_mode=='double'){%>class="active"<%}%>><a href="#"data-view-mode="double">Double</a></li>
-        </ul>
-      </div>
-
       <span id="toggle-fullscreen"><a href="#" title="Toggle fullscreen"><i class="glyphicon glyphicon-fullscreen"></i></a></span>
 
       <span id="toggle-settings"><a href="#"><i class="glyphicon glyphicon-cog"></i></a></span>
@@ -111,9 +99,13 @@
     <span id="single-page-progress"></span>
     <div id="single-page-view-content"></div>
 
-    <div id="chapter-page-nav-left"><span style="display: inline-block;height: 100%;vertical-align: middle;"></span><a href="#" class="single-page-button" title="<%if(viewer_view_direction=='left-to-right'){%>Prev page (Left)<%}else{%>Next page (Left)<%}%>"><i class="fa fa-chevron-left fa-2x fa-fw"></i></a></div>
+    <div id="chapter-page-nav-left">
+      <span style="display: inline-block;height: 100%;vertical-align: middle;"></span><a href="#" class="single-page-button" title="<%if(viewer_view_direction=='left-to-right'){%>Prev page (Left)<%}else{%>Next page (Left)<%}%>"><i class="fa fa-chevron-left fa-2x fa-fw"></i></a>
+    </div>
 
-    <div id="chapter-page-nav-right"><span style="display: inline-block;height: 100%;vertical-align: middle;"></span><a href="#" class="single-page-button" title="<%if(viewer_view_direction=='left-to-right'){%>Next page (Right)<%}else{%>Prev page (Right)<%}%>"><i class="fa fa-chevron-right fa-2x fa-fw"></i></a></div>
+    <div id="chapter-page-nav-right">
+      <span style="display: inline-block;height: 100%;vertical-align: middle;"></span><a href="#" class="single-page-button" title="<%if(viewer_view_direction=='left-to-right'){%>Next page (Right)<%}else{%>Prev page (Right)<%}%>"><i class="fa fa-chevron-right fa-2x fa-fw"></i></a>
+    </div>
 
   </div>
 
@@ -133,10 +125,14 @@
     <div id="zoom-control-inner">
       <span id="zoom-width-value" data-value="<%=(viewer_image_width)%>" class="hidden"></span>
       <span id="zoom-height-value" data-value="<%=(viewer_image_height)%>" class="hidden"></span>
-      <a href="#" id="zoom-fit-height" class="<%=(viewer_view_mode=='scroll')?'hidden':''%>"><i class="glyphicon glyphicon-resize-vertical"></i></a>
-      <a href="#" id="zoom-fit-width" class="<%=(viewer_view_mode=='scroll')?'hidden':''%>"><i class="glyphicon glyphicon-resize-horizontal"></i></a>
-      <a href="#" id="zoom-in"><i class="glyphicon glyphicon-zoom-in"></i></a>
-      <a href="#" id="zoom-out"><i class="glyphicon glyphicon-zoom-out"></i></a>
+
+      <a href="#" id="zoom-fit-height" title="Fit height" class="<%=(viewer_view_mode=='scroll')?'hidden':''%>"><i class="glyphicon glyphicon-resize-vertical"></i></a>
+      <a href="#" id="zoom-fit-width" title="Fit width" class="<%=(viewer_view_mode=='scroll')?'hidden':''%>"><i class="glyphicon glyphicon-resize-horizontal"></i></a>
+      <a href="#" id="zoom-fit-all" title="Fit with and height" class="<%=(viewer_view_mode=='scroll')?'hidden':''%>"><i class="glyphicon glyphicon-move"></i></a>
+
+      <a href="#" id="zoom-auto" title="Zoom auto" class="<%=(viewer_view_mode=='scroll')?'hidden':''%>"><i class="glyphicon glyphicon-search"></i></a>
+      <a href="#" id="zoom-in" title="Zoom in"><i class="glyphicon glyphicon-zoom-in"></i></a>
+      <a href="#" id="zoom-out" title="Zoom out"><i class="glyphicon glyphicon-zoom-out"></i></a>
     </div>
   </div>
 
@@ -187,43 +183,6 @@
           return false;
         });
       }
-
-      $('#mr-scroll-pages-view').click(function(e) {
-        // e.preventDefault();
-        $('#manga-top-nav').toggleClass('disappear');
-        $('#back-to-top').toggleClass('disappear');
-        $('#chapter-load-progress').toggleClass('disappear');
-        $('#zoom-control').toggleClass('disappear');
-
-        // toggle top nav
-        if ($('#manga-top-nav').hasClass('disappear')) {
-          $('#manga-top-nav').css("top", "-60px");
-        } else {
-          $('#manga-top-nav').css("top", "0px");
-        }
-        // toggle back to top
-        if ($('#back-to-top').hasClass('disappear')) {
-          $('#back-to-top').css("bottom", "-60px");
-        } else {
-          $('#back-to-top').css("bottom", "10px");
-        }
-        // toggle chapter load progress
-        if ($('#chapter-load-progress').hasClass('disappear')) {
-          $('#chapter-load-progress').css("bottom", "-60px");
-        } else {
-          $('#chapter-load-progress').css("bottom", "10px");
-        }
-        // toggle zoom control
-        if ($('#zoom-control').hasClass('disappear')) {
-          $('#zoom-control').css("bottom", "-70px");
-        } else {
-          $('#zoom-control').css("bottom", "40px");
-        }
-        // hide settings view
-        if (!$('#mr-settings-view').hasClass('hidden')) {
-          $('#mr-settings-view').addClass('hidden');
-        }
-      });
 
       $('#toggle-settings a').click(function(e) {
         e.preventDefault();
@@ -294,19 +253,6 @@
         // $(this).text(current_theme_name);
       });
 
-      $('#viewModeSettings a').click(function(e) {
-        e.preventDefault();
-        // e.stopPropagation();
-        $('#viewModeSettings a').parent().removeClass('active');
-        $(this).parent().addClass('active');
-        var view_mode = $(this).attr('data-view-mode');
-        $('#viewModeSettingsDropdownLabel').text(view_mode);
-        viewer.changeViewMode(view_mode);
-        $('#settings-view-mode a').text(view_mode);
-        $('#settings-view-mode a').attr('data-view-mode', view_mode);
-        $.cookie("viewer-view-mode", view_mode);
-      });
-
       $('#settings-view-mode a').click(function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -324,13 +270,6 @@
           $(this).text('scroll');
           viewer.changeViewMode(current_view_mode);
         }
-        if (current_view_mode == 'scroll') {
-          $('#zoom-fit-height').addClass('hidden');
-          $('#zoom-fit-width').addClass('hidden');
-        } else {
-          $('#zoom-fit-height').removeClass('hidden');
-          $('#zoom-fit-width').removeClass('hidden');
-        }
         $.cookie("viewer-view-mode", current_view_mode);
         $(this).attr('data-view-mode', current_view_mode);
       });
@@ -342,14 +281,10 @@
         if (current_view_direction == 'right-to-left') {
           current_view_direction = 'left-to-right';
           $(this).text('Left to Right');
-          $('#chapter-page-nav-left a').attr('title', 'Prev page (Left)');
-          $('#chapter-page-nav-right a').attr('title', 'Next page (Right)');
           viewer.changeViewDirection(current_view_direction);
         } else if (current_view_direction == 'left-to-right') {
           current_view_direction = 'right-to-left';
           $(this).text('Right to Left');
-          $('#chapter-page-nav-left a').attr('title', 'Next page (Left)');
-          $('#chapter-page-nav-right a').attr('title', 'Prev page (Right)');
           viewer.changeViewDirection(current_view_direction);
         }
         $.cookie("viewer-view-direction", current_view_direction);

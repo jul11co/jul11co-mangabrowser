@@ -2,6 +2,19 @@
 body {
   background-color: #f0f0f0;
 }
+ul#sidebar-list li>a {
+  padding: 8px 10px;
+  color: #333;
+}
+ul#sidebar-list li>a:hover,
+ul#sidebar-list li>a:active,
+ul#sidebar-list li.active>a,
+ul#sidebar-list li.active>a:hover,
+ul#sidebar-list li.active>a:active {
+  /*color: #337ab7;*/
+  background: rgba(153,153,153,0.4);
+  border-radius: 4px;
+}
 .content {
   background-color: transparent;
 }
@@ -153,7 +166,20 @@ table.items tr.item-manga {
 #file-preview-close a {
   text-decoration: none;
 }
-#file-preview-close-button {
+#file-preview-actions {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  vertical-align: top;
+  max-width: 60px;
+}
+#file-preview-actions .file-preview-big-button {
+  margin-top: 10px;
+  position: relative;
+  display: inline-block;
+  text-decoration: none;
+}
+/*#file-preview-close-button {
   position: absolute;
   top: 10px;
   right: 10px;
@@ -161,22 +187,22 @@ table.items tr.item-manga {
 }
 #file-preview-image-resize-button {
   position: absolute;
-  top: 60px;
+  top: 50px;
   right: 10px;
   text-decoration: none;
 }
 #file-preview-open-external-button {
   position: absolute;
-  top: 110px;
+  top: 90px;
   right: 10px;
   text-decoration: none;
 }
 #file-preview-open-manga-viewer {
   position: absolute;
-  top: 160px;
+  top: 130px;
   right: 10px;
   text-decoration: none;
-}
+}*/
 #file-preview-title-container {
   position: absolute;
   text-align: center;
@@ -326,25 +352,30 @@ li.nav-head {
   text-transform: uppercase;
 }
 .manga-grid-item {
-  width: calc(20% - 10px);
+  width: calc(20% - 5px);
   display: inline-block;
   margin-bottom: 10px;
   text-align: center;
   vertical-align: top;
 }
+/*@media (min-width: 1200px) {
+  .manga-grid-item {
+    width: calc(16.67% - 5px);
+  }
+}*/
 @media (max-width: 992px) {
   .manga-grid-item {
-    width: calc(25% - 10px);
+    width: calc(25% - 5px);
   }
 }
 @media (max-width: 768px) {
   .manga-grid-item {
-    width: calc(33% - 10px);
+    width: calc(33% - 5px);
   }
 }
 @media (max-width: 488px) {
   .manga-grid-item {
-    width: calc(50% - 10px);
+    width: calc(50% - 5px);
   }
 }
 .manga-grid-item img {
@@ -356,4 +387,8 @@ li.nav-head {
 .manga-cover-container {
   margin-bottom: 10px;
   padding: 5px;
+}
+.manga-grid-item-text {
+  text-align: center;
+  margin-bottom: 10px;
 }

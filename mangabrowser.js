@@ -214,6 +214,7 @@ fse.ensureDirSync(db_dir);
 fse.ensureDirSync(path.join(db_dir, utils.md5Hash(data_dir)));
 
 var chapter_read_store = new JsonStore({file: path.join(db_dir, utils.md5Hash(data_dir), 'chapter_read.json')});
+var reading_manga_store = new JsonStore({file: path.join(db_dir, utils.md5Hash(data_dir), 'manga_reading.json')});
 
 var update_manga_queue = new JobQueue();
 
@@ -251,7 +252,50 @@ function isChapterRead(chapter_url) {
 
 function setChapterRead(chapter_url, read_info) {
   console.log('Read chapter:', chapter_url);
-  chapter_read_store.set(utils.md5Hash(chapter_url), read_info || {last_read: new Date()});
+  chapter_read_store.set(utils.md5Hash(chapter_url), read_info || { last_read: new Date() });
+}
+
+function updateMangaReading(manga_relpath, reading_chapter_info) {
+  if (!manga_relpath) {
+    console.error('updateReadingStore: missing manga_relpath');
+    return;
+  }
+  if (!reading_chapter_info) {
+    console.error('updateReadingStore: missing reading_chapter_info');
+    return;
+  }
+
+  var manga_info = manga_map[manga_relpath];
+  if (!manga_info) {
+    console.error('updateReadingStore: Manga info not found!', manga_relpath);
+    return;
+  }
+
+  reading_manga_store.update(manga_info.relpath, {
+    last_read: new Date(),
+    last_read_chapter: {
+      url: reading_chapter_info.url,
+      title: reading_chapter_info.title,
+      output_dir: reading_chapter_info.output_dir,
+      pages_count: reading_chapter_info.pages_count,
+      last_update: reading_chapter_info.last_update
+    }
+  });
+}
+
+var getReadingMangaList = function() {
+  var reading_manga_map = reading_manga_store.toMap();
+  var reading_manga_list = [];
+  for (var manga_relpath in reading_manga_map) {
+    if (manga_map[manga_relpath]) {
+      reading_manga_list.push(Object.assign(manga_map[manga_relpath], {
+        last_read: reading_manga_map[manga_relpath].last_read,
+        last_read_chapter: reading_manga_map[manga_relpath].last_read_chapter
+      }));
+    }
+  }
+  sortItems(reading_manga_list, 'last_read', 'desc');
+  return reading_manga_list;
 }
 
 ///
@@ -324,6 +368,7 @@ var startServer = function() {
   app.set('views', path.join(__dirname, 'views'));
   app.set('view engine', 'ejs');
   app.use(session({
+    name: 'connect-'+(utils.md5Hash(data_dir))+'.sid',
     secret: 'jul11co-mangabrowser',
     resave: true,
     saveUninitialized: true
@@ -614,9 +659,37 @@ var startServer = function() {
     }
 
     if (manga.chapters) {
-      manga.chapters.forEach(function(chapter) {
-        if (chapter.url && isChapterRead(chapter.url)) {
-          chapter.read = true;
+      var chapter_cbz_exists_map = {};
+      manga.chapters.forEach(function(chapter_info) {
+        if (chapter_info.url && isChapterRead(chapter_info.url)) {
+          chapter_info.read = true;
+        }
+
+        var chapter_cbz_abs_path = getAbsPath(chapter_info.cbz_file);
+        if (utils.fileExists(chapter_cbz_abs_path)) {
+          chapter_info.type = 'cbz';
+          chapter_info.cbz_exists = true;
+
+          if (files_map[chapter_info.cbz_file]) {
+            chapter_info.cbz_size = files_map[chapter_info.cbz_file].size;
+            chapter_info.cbz_mtime = files_map[chapter_info.cbz_file].mtime;
+          } else {
+            var cbz_file_stats = fileUtils.getFileStatsSync(chapter_cbz_abs_path);
+            chapter_info.cbz_size = cbz_file_stats['size'];
+            chapter_info.cbz_mtime = cbz_file_stats['mtime'];
+
+            addFileToMap({
+              path: chapter_cbz_abs_path,
+              name: path.basename(chapter_info.cbz_file),
+              type: 'cbz',
+              size: cbz_file_stats['size'],
+              atime: cbz_file_stats['atime'],
+              mtime: cbz_file_stats['mtime'],
+              ctime: cbz_file_stats['ctime']
+            });
+          }
+        } else {
+          chapter_info.type = 'remote';  
         }
       });
     }
@@ -628,6 +701,7 @@ var startServer = function() {
       scope: 'manga_info',
       parents: parents,
       manga: manga,
+      reading_manga_list: [],
       // global
       files_count: all_files.length,
       manga_count: manga_list.length,
@@ -645,6 +719,12 @@ var startServer = function() {
   }
 
   var mangaList = function(req, res) {
+
+    var reading_manga_list = getReadingMangaList();
+    if (reading_manga_list.length > 25) {
+      reading_manga_list = reading_manga_list.slice(0, 25);
+    }
+
     if (req.query.view) {
       return res.render('manga-browser', {
         config: config,
@@ -654,6 +734,7 @@ var startServer = function() {
         manga: {},
         manga_items: [],
         items_count: 0,
+        reading_manga_list: reading_manga_list,
         // pagination
         page_size: 100,
         current_page: 1,
@@ -877,6 +958,7 @@ var startServer = function() {
       parents: parents,
       manga_items: manga_items,
       items_count: items_count,
+      reading_manga_list: reading_manga_list,
       // pagination
       page_size: page_size,
       current_page: current_page,
@@ -1108,6 +1190,9 @@ var startServer = function() {
       var chapter_info = manga_chapters_map[chapterpath_hash];
       if (chapter_info && chapter_info.url) {
         setChapterRead(chapter_info.url);
+        if (chapter_info.manga_relpath) {
+          updateMangaReading(chapter_info.manga_relpath, chapter_info);
+        }
       }
 
       if (comic_cache[filepath_hash]) return res.json(comic_cache[filepath_hash]);
@@ -1157,7 +1242,11 @@ var startServer = function() {
       }
 
       if (chapter_info.url) {
-        setChapterRead(chapter_info.url)
+        setChapterRead(chapter_info.url);
+
+        if (chapter_info.manga_relpath) {
+          updateMangaReading(chapter_info.manga_relpath, chapter_info);
+        }
       }
 
       return res.json(chapter_info);
@@ -1227,6 +1316,10 @@ var startServer = function() {
         return res.status(500).send('Get manga cover failed! ' + err.message);
       }
 
+      if (!utils.fileExists(cover_filepath)) {
+        return res.status(404).send('Manga cover not found!');
+      }
+
       if (req.query.size == 'thumb') {
         var filepath_hash = utils.md5Hash(cover_filepath);
     
@@ -1240,8 +1333,8 @@ var startServer = function() {
         }
 
         photoFile.generateThumbImage(cover_filepath, thumb_filepath, {
-          thumb_width: 160,
-          thumb_height: 250
+          thumb_width: 320,
+          thumb_height: 500
         }, function(err) {
           if (err) {
             console.error('Generate thumb failed! ' + err.message, cover_filepath);
@@ -1523,6 +1616,10 @@ var startServer = function() {
 
             if (chapter_info.url) {
               setChapterRead(chapter_info.url);
+
+              if (chapter_info.manga_relpath) {
+                updateMangaReading(chapter_info.manga_relpath, chapter_info);
+              }
             }
 
             return res.json({
@@ -1548,6 +1645,10 @@ var startServer = function() {
 
           if (chapter_info.url) {
             setChapterRead(chapter_info.url);
+
+            if (chapter_info.manga_relpath) {
+              updateMangaReading(chapter_info.manga_relpath, chapter_info);
+            }
           }
 
           return res.json({
@@ -1945,12 +2046,12 @@ var loadMangaInfo = function(manga_dir, saver_file_name) {
 
       chapter_info.title_lc = chapter_info.title.toLowerCase();
 
+      chapter_info.pages_count = entry_info.chapter_images.length;
+      chapter_info.pages = entry_info.chapter_images.slice();
+
       if (utils.fileExists(getAbsPath(chapter_info.cbz_file))) {
         chapter_info.type = 'cbz';
         chapter_info.cbz_exists = true;
-
-        chapter_info.pages_count = entry_info.chapter_images.length;
-        chapter_info.pages = entry_info.chapter_images.slice();
 
         if (files_map[chapter_info.cbz_file]) {
           chapter_info.cbz_size = files_map[chapter_info.cbz_file].size;
@@ -1970,17 +2071,14 @@ var loadMangaInfo = function(manga_dir, saver_file_name) {
             ctime: cbz_file_stats['ctime']
           });
         }
-
       } else {
         missing_chapters_count++;
-        chapter_info.type = 'remote';
-
-        chapter_info.pages_count = entry_info.chapter_images.length;
-        chapter_info.pages = entry_info.chapter_images.slice();
+        chapter_info.type = 'remote';  
       }
 
       var chapter_hash = utils.md5Hash(getAbsPath(chapter_info.output_dir));
       manga_chapters_map[chapter_hash] = {
+        manga_relpath: manga_info.relpath,
         output_dir: chapter_info.output_dir,
         url: chapter_info.url,
         title: chapter_info.title,
